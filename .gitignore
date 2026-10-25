@@ -1,0 +1,14 @@
+node_modules/
+dist/
+fin/fin.json
+app/assets/
+app/build/
+app/dist/
+app/keys/
+*.apk
+*.idsig
+*.p12
+live/*.json
+!live/README.md
+.DS_Store
+__pycache__/

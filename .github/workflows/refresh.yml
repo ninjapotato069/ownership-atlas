@@ -1,0 +1,82 @@
+# Rebuilds the atlas and publishes it with GitHub Pages (branch gh-pages):
+#   index.html     the web app
+#   data.json      the same data on its own; the Android app downloads it once a day
+#   version.json   the newest app release, so the app can say when an update is out
+#   companies.csv  today's market list
+#   live/          the pipeline's state (market list, company universe, Wikidata cache, status)
+# Weekdays after the US close it first refreshes the market list and Wikidata; a push to main only rebuilds.
+# gh-pages keeps a single commit, so the repository does not grow.
+name: Refresh the atlas
+
+on:
+  schedule:
+    - cron: '37 22 * * 1-5'   # 22:37 UTC Mon-Fri = 04:07 IST Tue-Sat
+  workflow_dispatch:
+    inputs:
+      wikidata:
+        description: 'Wikidata step: auto (full refresh weekly), full, or skip'
+        required: false
+        default: auto
+  push:
+    branches: [main]
+    paths: ['template.html', 'build/**', 'data/**', 'fin/**', 'geo/**', 'pipeline/**', 'config/**', '.github/workflows/refresh.yml']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - name: Check out the code and the last published state
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          git clone --quiet --depth 1 "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" src
+          mkdir -p src/live
+          if git clone --quiet --depth 1 --branch gh-pages "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" site; then
+            cp site/live/*.json src/live/ 2>/dev/null || true
+            echo "BASE=$(git -C site rev-parse HEAD)" >> "$GITHUB_ENV"
+          fi
+
+      - name: Market list (TradingView screener)
+        if: github.event_name != 'push'
+        working-directory: src
+        run: python3 pipeline/markets.py
+
+      - name: Founding years, descriptions and owners (Wikidata)
+        if: github.event_name != 'push' && inputs.wikidata != 'skip'
+        working-directory: src
+        run: python3 pipeline/wikidata.py "${{ inputs.wikidata || 'auto' }}"
+
+      - name: Build
+        working-directory: src
+        run: node build/build.js
+
+      - name: Publish
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          rm -rf out && mkdir -p out/live
+          cp src/dist/atlas.html out/index.html
+          cp src/dist/data.json out/data.json
+          cp src/live/*.json out/live/ 2>/dev/null || true
+          python3 src/pipeline/site_extras.py out
+          cd out
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Atlas $(date -u '+%Y-%m-%d %H:%M') UTC"
+          git remote add origin "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if [ -n "${BASE:-}" ]; then
+            git push -q --force-with-lease="gh-pages:${BASE}" origin HEAD:gh-pages
+          else
+            git push -q origin HEAD:gh-pages
+          fi
+          echo "Published $(du -h index.html | cut -f1) page, $(du -h data.json | cut -f1) data" >> "$GITHUB_STEP_SUMMARY"

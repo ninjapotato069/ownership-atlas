@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.ownershipatlas.app"
+    android:versionCode="8"
+    android:versionName="1.7">
+
+    <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
+
+    <!-- The page ships inside the app. The network is used only to download the daily atlas from GitHub. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- The daily background download waits for a network and survives restarts. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <application
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:theme="@style/AppTheme"
+        android:allowBackup="true"
+        android:hardwareAccelerated="true">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboard|keyboardHidden|navigation|uiMode"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <!-- Downloads the newest atlas about once a day. -->
+        <service
+            android:name=".MainActivity$SyncJob"
+            android:permission="android.permission.BIND_JOB_SERVICE"
+            android:exported="false" />
+        <!-- Serves exported CSV and PNG files to the app the user shares them with. -->
+        <provider
+            android:name=".MainActivity$Files"
+            android:authorities="com.ownershipatlas.app.files"
+            android:exported="false"
+            android:grantUriPermissions="true" />
+    </application>
+</manifest>

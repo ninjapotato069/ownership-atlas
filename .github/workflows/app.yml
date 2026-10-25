@@ -1,0 +1,63 @@
+# Builds the Android app (signed with the key in the repository secrets) and, when the version in
+# app/AndroidManifest.xml is new, publishes it as a GitHub release, then refreshes the site so
+# version.json points at it. Phones with the app see a note and a download link.
+name: Android app
+
+on:
+  push:
+    branches: [main]
+    paths: ['app/**', '.github/workflows/app.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: app
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out the code and the latest data
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          git clone --quiet --depth 1 "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" src
+          mkdir -p src/live
+          if git clone --quiet --depth 1 --branch gh-pages "https://x-access-token:${TOKEN}@github.com/${GITHUB_REPOSITORY}.git" site; then
+            cp site/live/*.json src/live/ 2>/dev/null || true
+          fi
+
+      - name: Build the page
+        working-directory: src
+        run: |
+          npm ci --prefix build --no-audit --no-fund
+          npm ci --prefix app/vendor --no-audit --no-fund
+          node build/build.js
+
+      - name: Build and sign the APK
+        working-directory: src
+        env:
+          ATLAS_KEYSTORE_B64: ${{ secrets.ATLAS_KEYSTORE_B64 }}
+          ATLAS_KEYSTORE_PASS: ${{ secrets.ATLAS_KEYSTORE_PASS }}
+        run: bash app/build.sh
+
+      - name: Publish a release when the version is new
+        working-directory: src
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          NAME=$(grep -o 'versionName="[^"]*"' app/AndroidManifest.xml | cut -d'"' -f2)
+          CODE=$(grep -o 'versionCode="[^"]*"' app/AndroidManifest.xml | cut -d'"' -f2)
+          APK="app/dist/OwnershipAtlas-${NAME}.apk"
+          if gh release view "app-v${NAME}" >/dev/null 2>&1; then
+            echo "app-v${NAME} is already published; bump versionName and versionCode to release a new build." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          printf 'Ownership Atlas for Android, version %s.\n\nOn your phone: download the APK below and open it. Installing over an earlier version keeps your settings.\n\nversionCode=%s\n' "$NAME" "$CODE" > notes.md
+          gh release create "app-v${NAME}" "$APK" --title "Ownership Atlas ${NAME}" --notes-file notes.md --target main
+          gh workflow run refresh.yml -f wikidata=skip

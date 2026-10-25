@@ -1,0 +1,15 @@
+# companiesmarketcap.com earnings ranking, last pages (biggest pre-tax losses), fetched 2026-10-20 ($B, TTM)
+# Alstom (-4.89) left out: no known event explains a loss that size, so treated as a data error.
+E renault -12.07
+E ford -10.67
+E intel -8.71
+E vodafone -7.85
+E lucid -3.71
+E kraftheinz -3.67
+E rivian -2.96
+E coreweave -1.93
+E figma -1.59
+E volvo_cars -0.58
+E honda -0.54
+E didi -0.51
+E dongfeng -0.16
