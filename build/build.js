@@ -62,7 +62,8 @@ const readLive = f => { const p = path.join(LIVE, f); return fs.existsSync(p) ? 
 const universe = (readLive('universe.json') || {}).members || {};
 const wd = Object.assign({companies:{}, orgs:{}, rels:[]}, readLive('wikidata.json') || {});
 const IMAP = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'pipeline', 'industries.json'), 'utf8'));
-const amap = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'atlas_map.json'), 'utf8')).symbols;
+const AMAP = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'config', 'atlas_map.json'), 'utf8'));
+const amap = AMAP.symbols, qmap = AMAP.wikidata || {};
 let markets = readLive('markets.json');
 const YNOW = new Date().getUTCFullYear();
 const ext = {};
@@ -74,77 +75,141 @@ const slugId = (s, taken) => { const w = norm(s).join(' ').replace(/[^a-z0-9 ]/g
 const TAIL = /(?:[\s,.-]+(?:class [a-z]|cl [a-z]|series [a-z0-9]+|reg s|-h-|units?|co\.?,? ltd\.?|company limited|corporation|corp\.?|incorporated|inc\.?|limited|ltd\.?|plc|s\.?a\.?b\.? de c\.?v\.?|sab de cv|s\.?a\.?|s\.?p\.?a\.?|a\.?g\.?|n\.?v\.?|se|ab|asa|oyj|a\/s|tbk|pcl|public company limited|public co\.?,? ltd\.?|bhd\.?|berhad|jsc|pjsc|new|the))+\s*$/i;
 const cleanName = n => { let x = String(n || '').replace(/\s+/g, ' ').trim().replace(/^PT\s+/, '').replace(/\s*\(The\)\s*$/i, ''), prev = null; while (prev !== x) { prev = x; x = x.replace(TAIL, '').replace(/[\s,.-]+$/, '').trim(); } if (x === x.toUpperCase() && x.length > 5) x = x.split(' ').map(w => w.length <= 4 ? w : w[0] + w.slice(1).toLowerCase()).join(' '); return x || prev; };
 const capFirst = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+const theName = n => /^(?:United|Netherlands|Philippines|Bahamas|Gambia)|(?:Islands|Republic|Emirates|States|Kingdom)$/.test(n) ? 'the ' + n : n;
 const mcapB = {};
 if (markets && Array.isArray(markets.rows)) { const si = markets.cols.indexOf('s'), mi = markets.cols.indexOf('m'); for (const r of markets.rows) mcapB[r[si]] = r[mi] / 1000; }
 const qToId = new Map();
 for (const [sym, id] of Object.entries(amap)) { const c = wd.companies[sym]; if (c && c.q && ids.has(id)) qToId.set(c.q, id); }
 const skipped = [];
+const ownersOf = new Map();
+for (const r of wd.rels) (ownersOf.get(r.t) || ownersOf.set(r.t, []).get(r.t)).push(r.s);
 // listed companies
 for (const [sym, m] of Object.entries(universe).sort((a, b) => (mcapB[b[0]] || 0) - (mcapB[a[0]] || 0))) {
   if (ids.has(m.id)) continue;
   let c = wd.companies[sym] || {};
+  // Matched to an operating subsidiary whose parent is the listed holding company (Kirin Brewery for Kirin
+  // Holdings, Fifth Third Bank for Fifth Third Bancorp): use the parent instead.
+  if (c.q && c.l && norm(c.l).join(' ') !== norm(m.n).join(' ')) {
+    const hold = (ownersOf.get(c.q) || []).find(q => wd.orgs[q] && norm(wd.orgs[q].l).join(' ') === norm(m.n).join(' '));
+    if (hold) { const o = wd.orgs[hold]; c = {q:hold, l:o.l, d:o.d, f:o.f, cc:o.cc, w:c.w}; }
+  }
   if (c.q && c.l && !sameEntity(c.l, m.n)) c = {};            // a doubtful Wikidata match: use none of it
   const cc = countries[m.cc] ? m.cc : c.cc && countries[c.cc] ? c.cc : null;
   if (!cc) { skipped.push(sym + ' (' + m.cc + ')'); continue; }
   const ind = IMAP.industry[m.ind] || IMAP.sector[m.sec] || 'grp';
   const name = c.l && c.l.length <= 60 ? c.l : cleanName(m.n);
   const f = c.f && c.f >= 1500 && c.f <= YNOW ? c.f : YNOW, v = mcapB[sym] || 0;
-  const desc = c.d ? capFirst(c.d).replace(/\.?$/, '.') : `Listed company based in ${countries[cc][0]}${m.ind ? ' (' + m.ind.toLowerCase() + ')' : ''}.`;
+  const generic = !c.d || /^(?:[\w-]+ ){0,2}(?:company|corporation|business|enterprise|organi[sz]ation|firm|conglomerate|holding company)$/i.test(c.d.trim());
+  const desc = !generic ? capFirst(c.d).replace(/\.?$/, '.') : `Listed company based in ${theName(countries[cc][0])}${m.ind ? ' (' + m.ind.toLowerCase() + ')' : ''}.`;
   const node = [m.id, name, cc, ind, 'pvt', f, 0, v >= 100 ? 3 : v >= 20 ? 2 : 1, desc, ''];
   nodesRaw.push(node); ids.set(m.id, node);
   ext[m.id] = Object.assign({s:sym}, c.q ? {q:c.q} : {}, f === YNOW && !c.f ? {fu:1} : {}, c.w ? {w:c.w} : {});
   if (c.q) qToId.set(c.q, m.id);
 }
 // owners: matched to hand-built entities where possible (states, families, funds), otherwise added
-const curatedByName = new Map();
-for (const n of nodesRaw) if (!ext[n[0]]) { const k = norm(n[1]).join(' '); if (k && !curatedByName.has(k)) curatedByName.set(k, n); }
 const typeOf = n => Array.isArray(n[4]) ? n[4][n[4].length - 1][1] : n[4];
-const used = new Set(wd.rels.filter(r => qToId.has(r.t) || wd.orgs[r.t]).map(r => r.s));
-const KIND_OF = {human:['fam', 'grp'], country:['gov', 'gov'], gov:['gov', 'gov'], fund:['fund', 'inv'], foundation:['fam', 'org'], company:['pvu', 'grp']};
+// Hand-built names, with the aliases in brackets or after a slash: "Thomson family (Woodbridge)", "Naspers / Prosus".
+const curatedByName = new Map();
+const addName = (k, n) => { if (k && !curatedByName.has(k)) curatedByName.set(k, n); };
+for (const n of nodesRaw) {
+  if (ext[n[0]]) continue;
+  addName(norm(n[1]).join(' '), n);
+  const m = /^(.*?)\s*\((.+)\)\s*$/.exec(n[1]);
+  if (m) { addName(norm(m[1]).join(' '), n); for (const a of m[2].split(/\s*(?:&|\/|,)\s*/)) addName(norm(a).join(' '), n); }
+  if (n[1].includes(' / ')) for (const a of n[1].split(' / ')) addName(norm(a).join(' '), n);
+}
+// Wikidata items the hand-built atlas holds under another name (state bodies, sovereign funds, family holdings).
+for (const [q, id] of Object.entries(qmap)) if (ids.has(id) && !qToId.has(q)) qToId.set(q, id);
+// What kind of owner. "skip": not an owner at all (treasury shares, the free float, custodian and nominee banks).
+// "state": the state itself (governments, ministries, state-asset agencies), one entity per country.
+const PSEUDO = /\b(nominees?|custody|custodian|trustee services|master trust bank|trust (?:&|and) custody|treasury (?:stock|shares)|public float|free float|clearstream|euroclear|securities depository|depository trust|cede (?:&|and) co|hkscc|shareholders?|institutional investors?|employee stock ownership|public company|general public)\b/i;
+const STATE_NAME = /^(?:the )?(?:government|state|kingdom|republic|commonwealth|federal government|federal republic|people's republic|socialist republic|union) of\b|^(?:the )?state treasury\b|\bministry\b|\bministries\b|\bstate council\b|state-owned assets supervision|\bsasac\b|agence des participations|sociedad estatal de participaciones|federal agency for state property|department of the treasury|council of ministers|central public administration/i;
+const STATE_DESC = /\b(government ministry|executive department|national government|administrative bod(?:y|ies)|chief administrative authority|public authorities|represents the [a-z]+ state)\b/i;
+const GOVLIKE = /\b(sovereign wealth|central bank|national bank of|development bank|investment authority|state holding|state fund|government pension|pension fund|provident fund|state agency|government agency|municipal|municipality|city of|largest city|city in|capital of|prefecture|province of|metropolis|county of)\b/i;
+const PSU = /\b(state-owned|state owned|government-owned|government owned|state enterprise|public enterprise|public sector undertaking|owned by the government|crown corporation|federal public company)\b/i;
+const FOUNDATION = /\b(foundation|charit\w*|non-?profit|trust fund|stiftung|fondation|fundaci\w*|cooperative|co-operative)\b/i;
+const FUNDLIKE = /\b(investment (?:fund|company|firm|manager|management|trust)|asset manag\w*|private equity|venture capital|hedge fund|pension|mutual fund|investment holding|holding company|family office|wealth fund|endowment|capital management)\b/i;
+function ownerKind(o) {
+  const l = o.l || '', d = o.d || '';
+  if (PSEUDO.test(l)) return 'skip';
+  if (o.k === 'human') return 'human';
+  if (o.iso || o.k === 'country') return 'state';
+  // "French State", "Italian Government": a name ending in State or Government, described as the state
+  if (STATE_NAME.test(l) || STATE_DESC.test(d) || (/\b(state|government)$/i.test(l) && /\b(state|government|public authorit|country|nation)/i.test(d))) return 'state';
+  if (GOVLIKE.test(l + ' ' + d)) return 'gov';
+  if (PSU.test(d)) return 'psu';
+  if (FOUNDATION.test(l + ' ' + d)) return 'foundation';
+  if (FUNDLIKE.test(l + ' ' + d)) return 'fund';
+  return 'company';
+}
+const kindQ = new Map(Object.entries(wd.orgs).map(([q, o]) => [q, ownerKind(o)]));
+// an owner that no longer exists (a dissolution date, or a closed span such as "(1892–2024)" in its description)
+const ended = o => !!o.x || /\(\s*\d{3,4}\s*[–-]\s*\d{3,4}\s*\)/.test(o.d || '');
+const KIND_OF = {human:['fam', 'grp'], gov:['gov', 'gov'], psu:['psu', 'grp'], fund:['fund', 'inv'], foundation:['fam', 'org'], company:['pvu', 'grp']};
 let orgAdded = 0;
+// The state of a country: the hand-built gov_xx entity when it stands for the state itself, otherwise one added here.
+function stateOf(cc, o) {
+  const g = ids.get('gov_' + cc.toLowerCase());
+  if (g && !/\b(fund|bank|authority|corporation|investment)\b/i.test(g[1])) return g[0];
+  const id = g ? 'gov_' + cc.toLowerCase() + '_state' : 'gov_' + cc.toLowerCase();
+  if (!ids.has(id)) {
+    const f = o && o.iso && o.f >= 1000 && o.f <= YNOW ? o.f : 1900;
+    const node = [id, 'Government of ' + countries[cc][0], cc, 'gov', 'gov', f, 0, 1, '', ''];
+    nodesRaw.push(node); ids.set(id, node); orgAdded++;
+    ext[id] = Object.assign(o && o.iso ? {q:o.q} : {}, f === 1900 ? {fu:1} : {});
+  }
+  return id;
+}
+const used = new Set(wd.rels.filter(r => qToId.has(r.t) || wd.orgs[r.t]).map(r => r.s));
 for (let pass = 0; pass < 3; pass++) for (const [q, o] of Object.entries(wd.orgs)) {   // repeated: owners of owners
   if (qToId.has(q) || !used.has(q)) continue;
+  const kind = kindQ.get(q);
+  if (kind === 'skip' || ended(o)) continue;
   if (!wd.rels.some(r => r.s === q && qToId.has(r.t))) continue;
   const cc = o.cc && countries[o.cc] ? o.cc : null;
-  if (o.k === 'country' || (o.k === 'gov' && cc && /^(the )?government of /i.test(o.l || ''))) {
-    const g = cc && ids.get('gov_' + cc.toLowerCase());
-    if (g) { qToId.set(q, g[0]); continue; }
-  }
   const hit = curatedByName.get(norm(o.l).join(' '));
   if (hit && (!cc || hit[2] === cc)) { qToId.set(q, hit[0]); continue; }
+  if (kind === 'state') { if (cc) qToId.set(q, stateOf(cc, Object.assign({q}, o))); continue; }
   if (!cc || !o.l) continue;
-  const [type, ind] = KIND_OF[o.k] || KIND_OF.company;
-  const id = o.k === 'country' ? 'gov_' + cc.toLowerCase() : slugId(o.l, ids);
-  if (ids.has(id)) { qToId.set(q, id); continue; }
-  const name = o.k === 'country' ? 'Government of ' + countries[cc][0] : o.l;
+  const [type, ind] = KIND_OF[kind] || KIND_OF.company;
+  const id = slugId(o.l, ids);
   const f = o.f && o.f >= 1000 && o.f <= YNOW ? o.f : YNOW;
   const desc = o.d ? capFirst(o.d).replace(/\.?$/, '.') : '';
-  const node = [id, name, cc, ind, type, f, 0, 1, desc, ''];
+  const node = [id, o.l.length <= 60 ? o.l : o.l.slice(0, 57) + '…', cc, ind, type, f, 0, 1, desc, ''];
   nodesRaw.push(node); ids.set(id, node); qToId.set(q, id); orgAdded++;
   ext[id] = Object.assign({q}, f === YNOW && !o.f ? {fu:1} : {});
 }
-// ownership links from Wikidata
-const pairs = new Set(links.map(l => l[0] + '>' + l[1]));
-let wdLinks = 0;
+// ownership links from Wikidata: one per owner and company (a parent statement and a holding statement are merged)
+const relBy = new Map();
 for (const r of wd.rels) {
+  const k = r.s + '>' + r.t, m = relBy.get(k);
+  if (!m) { relBy.set(k, Object.assign({}, r)); continue; }
+  if (r.k === 'parent') m.k = 'parent';
+  if (r.p != null && (m.p == null || r.p > m.p)) m.p = r.p;
+  if (r.y && (!m.y || r.y < m.y)) m.y = r.y;
+}
+const pairs = new Set(links.map(l => l[0] + '>' + l[1]));
+let wdLinks = 0, undated = 0;
+for (const r of relBy.values()) {
   const s = qToId.get(r.s), t = qToId.get(r.t);
   if (!s || !t || s === t || (!ext[s] && !ext[t]) || pairs.has(s + '>' + t) || pairs.has(t + '>' + s)) continue;
   const S = ids.get(s), T = ids.get(t), p = r.p != null ? Math.round(r.p * 100) / 100 : null;
   if (S[6] || T[6]) continue;                                   // a hand-built entity that no longer exists
-  const parent = r.k === 'parent';
-  // With a start date it is an event of that year (control bought, or a stake taken). Without one it is a
-  // long-standing owner: shown from the later founding year, like hand-built founder links, and not a deal.
+  if (p != null && p < 10) continue;                            // small holdings
+  if (r.k === 'owner' && p == null && typeOf(S) !== 'gov') continue;   // undisclosed holdings count only for a state
+  const parent = r.k === 'parent', control = parent && (p == null || p > 50);
+  // With a start date it is an event of that year: control bought, or a stake taken. Without one the link is
+  // shown in the current year only, marked "year unknown" (the 11th field) and not counted as a deal.
   const dated = r.y && r.y >= S[5] && r.y >= T[5] && r.y <= YNOW;
-  const y = dated ? r.y : Math.max(S[5], T[5]);
-  const kind = !dated ? 'fnd' : parent && (p == null || p > 50) ? 'acq' : 'stk';
-  const l = [s, t, y, 0, p, kind, null, 'Wikidata', ''];
-  if (parent && (p == null || p > 50)) l.push('C');
+  const kind = parent ? (dated ? (control ? 'acq' : 'stk') : 'fnd') : 'stk';
+  const l = [s, t, dated ? r.y : YNOW, 0, p, kind, null, 'Wikidata', '', control ? 'C' : null];
+  if (!dated) { l.push(1); undated++; }
   links.push(l); pairs.add(s + '>' + t); wdLinks++;
 }
 // a company the state controls is a public-sector company
 for (const l of links) { const T = ids.get(l[1]); if (ext[l[1]] && T[4] === 'pvt' && typeOf(ids.get(l[0])) === 'gov' && (l[9] === 'C' || l[4] > 50)) T[4] = 'psu'; }
 const extCount = Object.keys(ext).length;
-console.log(`automatic layer: ${extCount} entities (${extCount - orgAdded} listed companies, ${orgAdded} owners), ${wdLinks} ownership links from Wikidata` + (skipped.length ? `; ${skipped.length} left out for want of a country: ${skipped.slice(0, 8).join(', ')}` : ''));
+console.log(`automatic layer: ${extCount} entities (${extCount - orgAdded} listed companies, ${orgAdded} owners), ${wdLinks} ownership links from Wikidata (${undated} without a start year)` + (skipped.length ? `; ${skipped.length} left out for want of a country: ${skipped.slice(0, 8).join(', ')}` : ''));
 if (markets) {
   const ai = markets.cols.indexOf('a'); let cleared = 0;
   for (const r of markets.rows) if (r[ai] && !ids.has(r[ai])) { r[ai] = 0; cleared++; }

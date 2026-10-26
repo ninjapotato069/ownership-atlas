@@ -507,6 +507,7 @@ footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid 
 .mkpill i{width:8px;height:8px;border-radius:50%;background:var(--neutral);flex:none}
 .mkpill.on i{background:var(--good)}
 .mkpill.warn i{background:var(--warning)}
+.mkpill a{color:inherit;text-decoration:underline;text-underline-offset:2px}
 .mklive{margin-bottom:16px;display:grid;gap:8px}
 .mklive .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .mklive .row h3{margin:0 auto 0 0}
@@ -874,7 +875,8 @@ for (const [cc, c] of Object.entries(D.countries)) COUNTRY[cc] = {cc, name:c[0],
 const nodes = D.nodes.map(a => { const [id,name,cc,ind,type,f,e,tier,desc,triv] = a; return {id,name,cc,ind,types:Array.isArray(type)?type:[[f,type]],f,e,tier,desc,triv,out:[],inn:[]}; });
 const byId = new Map(nodes.map(n => [n.id, n]));
 const byName = new Map(nodes.map(n => [n.name.toLowerCase(), n]));
-const links = D.links.map((a, i) => { const [s,t,y,e,p,k,v,note,flag,vt] = a; const L = {i,s:byId.get(s),t:byId.get(t),y,e,p,k,v,note,flag,vt}; L.s.out.push(L); L.t.inn.push(L); return L; });
+// optional 11th field: 1 = start year unknown (Wikidata owners): shown in the current year only, not a deal
+const links = D.links.map((a, i) => { const [s,t,y,e,p,k,v,note,flag,vt,u] = a; const L = {i,s:byId.get(s),t:byId.get(t),y,e,p,k,v,note,flag,vt,u:u ? 1 : 0}; L.s.out.push(L); L.t.inn.push(L); return L; });
 nodes.forEach(n => { n.deg = n.out.length + n.inn.length; });
 // Entities added automatically (listed companies from the daily market list, owners from Wikidata).
 const EXT = D.ext || {};
@@ -885,7 +887,8 @@ const classAt = (n, Y) => CLASS_OF[typeAt(n, Y)];
 const alive = (n, Y) => n.f <= Y && (!n.e || Y <= n.e);
 const ghostAt = (n, Y) => !!n.e && Y > n.e;
 const activeAt = (l, Y) => l.y <= Y && (!l.e || Y < l.e);
-const isDeal = l => l.k !== 'fnd';
+const isDeal = l => l.k !== 'fnd' && !l.u;
+const yTxt = l => l.u ? 'year unknown' : l.y;
 const HOLD = new Set(['acq','stk','inv','gov','jv','fnd']);
 const CSSV = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
 // Canvas colours: filled from the instrument tokens by readTheme(); HTML uses var(--i-*) directly so it follows theme switches.
@@ -1302,7 +1305,7 @@ function dealLine(l, persp) {
   let txt;
   if (!persp || persp === l.s) txt = `${persp ? '' : nameBtn(l.s, Y) + ' '}<span class="vb">${kd.act}${stake ? ' (' + stake.trim() + ')' : ''}</span> ${nameBtn(l.t, Y)}`;
   else txt = `<span class="vb">${kd.pas}</span> ${nameBtn(l.s, Y)}${stake ? ' <span class="vb">(' + stake.trim() + ')</span>' : ''}`;
-  return `<li><span class="yr">${l.y}</span><span>${txt}${fl}</span><span class="val">${fmtB(l.v)}</span>${l.note ? `<span class="note">${esc(l.note)}</span>` : ''}</li>`;
+  return `<li><span class="yr"${l.u ? ' title="Start year unknown"' : ''}>${l.u ? '–' : l.y}</span><span>${txt}${fl}</span><span class="val">${fmtB(l.v)}</span>${l.note ? `<span class="note">${esc(l.note)}</span>` : ''}</li>`;
 }
 function yearDeals(Y) { return links.filter(l => l.y === Y && isDeal(l) && (l.flag !== 'X' || state.failed)).sort((a, b) => (b.v || 0) - (a.v || 0) || b.t.tier - a.t.tier); }
 function switchesIn(Y) { const out = []; nodes.forEach(n => { for (let i = 1; i < n.types.length; i++) if (n.types[i][0] === Y) { const a = CLASS_OF[n.types[i - 1][1]], b = CLASS_OF[n.types[i][1]]; if (a !== b) out.push({n, a, b}); } }); return out; }
@@ -1444,7 +1447,7 @@ function ganttHTML(n) {
   rows.forEach((r, i) => { const y = i * rh + 4, nm = r.o.name.length > 17 ? r.o.name.slice(0, 16) + '…' : r.o.name;
     h += `<text x="${lw - 6}" y="${y + 9}" text-anchor="end" font-size="10.5" style="fill:var(--i-ink-2)">${esc(nm)}<title>${esc(r.o.name)}</title></text>`;
     r.segs.forEach(l => { const a = xs(l.y), b = xs(l.e || YMAX + 1), wdt = Math.max(2, b - a), op = l.p == null ? .55 : .35 + Math.min(l.p, 100) / 100 * .65;
-      h += `<rect x="${a.toFixed(1)}" y="${y + 2}" width="${wdt.toFixed(1)}" height="12" rx="2" style="fill:${iVar(classAt(r.o, l.y))};fill-opacity:${op.toFixed(2)}${l.flag === 'P' ? ';stroke:var(--i-pend);stroke-dasharray:3 2' : ''}"><title>${esc(r.o.name)}: ${KIND[l.k].label.toLowerCase()}${l.p != null ? ' ' + fmtP(l.p) : ''}, ${l.y}${l.e ? '–' + l.e : ' onward'}${l.flag === 'P' ? ' (pending)' : ''}</title></rect>`;
+      h += `<rect x="${a.toFixed(1)}" y="${y + 2}" width="${wdt.toFixed(1)}" height="12" rx="2" style="fill:${iVar(classAt(r.o, l.y))};fill-opacity:${op.toFixed(2)}${l.flag === 'P' ? ';stroke:var(--i-pend);stroke-dasharray:3 2' : ''}"><title>${esc(r.o.name)}: ${KIND[l.k].label.toLowerCase()}${l.p != null ? ' ' + fmtP(l.p) : ''}, ${l.u ? 'start year unknown' : l.y + (l.e ? '–' + l.e : ' onward')}${l.flag === 'P' ? ' (pending)' : ''}</title></rect>`;
       if (l.p != null && wdt > 30) h += `<text x="${(a + 4).toFixed(1)}" y="${y + 11.5}" font-size="9.5" style="fill:var(--i-bg);font-family:var(--font-mono)">${pctTxt(l.p)}</text>`; }); });
   const yx = xs(Math.min(state.year, YMAX) + .5);
   h += `<line x1="${yx.toFixed(1)}" x2="${yx.toFixed(1)}" y1="0" y2="${H - 12}" style="stroke:var(--i-ink);stroke-width:1;stroke-dasharray:2 2"/>`;
@@ -1464,7 +1467,7 @@ function renderProfile(n) {
   else if (n.e === Y) status = `${Y} is its last year as a separate company.`;
   const hist = n.types.length > 1 ? n.types.map(([y, ty]) => `${CLASS_LABEL[CLASS_OF[ty]]} ${y}`).join(' → ') : '';
   const pts = series(n), hasHold = !!pts && pts.some(d => d.hold > 0), hasVal = !!pts && pts.some(d => d.val > 0);
-  const rel =(arr, persp) => arr.length ? `<ul class="rel">${arr.map(l => { const o = l.s === persp ? l.t : l.s; return `<li>${nameBtn(o, Y)}<span class="meta">${l.p != null ? fmtP(l.p) + ' · ' : ''}${KIND[l.k].label.toLowerCase()} · ${l.y}${l.flag === 'P' ? ' · pending' : ''}</span></li>`; }).join('')}</ul>` : `<p>None recorded for ${Y}.</p>`;
+  const rel =(arr, persp) => arr.length ? `<ul class="rel">${arr.map(l => { const o = l.s === persp ? l.t : l.s; return `<li>${nameBtn(o, Y)}<span class="meta">${l.p != null ? fmtP(l.p) + ' · ' : ''}${KIND[l.k].label.toLowerCase()} · ${yTxt(l)}${l.flag === 'P' ? ' · pending' : ''}</span></li>`; }).join('')}</ul>` : `<p>None recorded for ${Y}.</p>`;
   side.innerHTML = `<div class="prof-head"><div><div class="ey">${esc(IND[n.ind])}</div><h2>${esc(n.name)}</h2></div><button class="closex" data-act="close" aria-label="Close profile">✕</button></div>
   <div class="pchips"><span class="pchip">${n.city && n.city.cc === n.cc ? esc(n.city.name) + ', ' : ''}${esc(COUNTRY[n.cc].name)}</span>${n.city && n.city.cc !== n.cc ? `<span class="pchip">Head office ${esc(n.city.name)}</span>` : ''}<span class="pchip"><span class="sw" style="--c:${iVar(cls)}"></span>${esc(TYPE_LABEL[t])}</span><span class="pchip">${foundedTxt(n)}</span>${n.e ? `<span class="pchip">Ended ${n.e}</span>` : ''}</div>
   ${status ? `<p style="color:var(--i-accent)">${status}</p>` : ''}
@@ -1480,7 +1483,7 @@ function renderProfile(n) {
   <h3>Holdings in ${Y}</h3>${rel(holds, n)}
   ${pts && (hasHold || hasVal) ? `<h3>Empire growth</h3>${hasHold ? spark(pts, 'hold', 'Active holdings', v => v, Y) : ''}${hasHold && hasVal ? '<div style="height:10px"></div>' : ''}${hasVal ? spark(pts, 'val', 'Cumulative disclosed deal value', fmtB, Y) : ''}` : ''}
   <h3>Deal timeline</h3>${dealsAll.length ? `<ul class="deals">${dealsAll.map(l => dealLine(l, n)).join('')}</ul>` : '<p>No deals recorded.</p>'}
-  ${struct.length ? `<h3>Founding &amp; parent links</h3><ul class="deals">${struct.map(l => dealLine(l, n)).join('')}</ul>` : ''}`;
+  ${struct.length ? `<h3>${struct.some(l => l.u && l.k !== 'fnd') ? 'Founding, parent &amp; undated links' : 'Founding &amp; parent links'}</h3><ul class="deals">${struct.map(l => dealLine(l, n)).join('')}</ul>` : ''}`;
 }
 side.addEventListener('click', e => {
   const b = e.target.closest('[data-node]'); if (b) { select(byId.get(b.dataset.node), {center:true}); return; }
@@ -1652,7 +1655,7 @@ function runPath() {
   let h = `<ol class="pathlist">`;
   chain.forEach((c, i) => {
     if (i > 0) { const l = c.via.l, from = c.via.from, fwd = l.s === from; const kd = KIND[l.k];
-      h += `<li class="pe"><b>${fwd ? kd.act : kd.pas}</b>${l.p != null && l.k !== 'mrg' ? ' · ' + fmtP(l.p) : ''} · ${l.y}${l.e && l.k !== 'asset' ? '–' + l.e : ''}${l.v ? ' · ' + fmtB(l.v) : ''}${l.flag === 'P' ? ' · pending' : ''}${l.note ? `<small>${esc(l.note)}</small>` : ''}</li>`; }
+      h += `<li class="pe"><b>${fwd ? kd.act : kd.pas}</b>${l.p != null && l.k !== 'mrg' ? ' · ' + fmtP(l.p) : ''} · ${yTxt(l)}${l.e && l.k !== 'asset' ? '–' + l.e : ''}${l.v ? ' · ' + fmtB(l.v) : ''}${l.flag === 'P' ? ' · pending' : ''}${l.note ? `<small>${esc(l.note)}</small>` : ''}</li>`; }
     h += `<li class="pn"><span class="odot" style="--c:${lCol(classAt(c.n, Y))}"></span><button class="lnk" data-node="${c.n.id}">${esc(c.n.name)}</button><small>${esc(COUNTRY[c.n.cc].name)} · ${esc(IND[c.n.ind])}</small></li>`;
   });
   h += `</ol><div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-showpath="1">Show this chain on the atlas</button><span class="empty" style="padding:6px 0">${ps.length - 1} link${ps.length > 2 ? 's' : ''} apart</span></div>`;
@@ -2853,6 +2856,7 @@ function drawFinTable() {
 // repository. The page carries a snapshot; the Android app downloads the newest file each day and serves it as
 // live/companies.json. Atlas companies linked to a listing take their market value from the list.
 const APP = window.AtlasApp && typeof window.AtlasApp.liveInfo === 'function' ? window.AtlasApp : null;
+const SITE_URL = 'https://ninjapotato069.github.io/ownership-atlas/';
 const MK = {data:null, info:null, bootBuilt:'', q:'', cc:'', sec:'', atlas:'', min:0, sort:{k:'m', dir:-1}, all:false, open:null, busy:false};
 // "Owners mapped": mapped by hand (widely held companies included), or an owner was found for an added company.
 const mkMapped = r => !!(r.node && (!r.node.auto || r.node.inn.some(l => HOLD.has(l.k) && l.flag !== 'X')));
@@ -2947,7 +2951,7 @@ function renderMarkets() {
   const rows = MK.data.rows, tot = d3.sum(rows, r => r.m), linked = rows.filter(mkMapped), lv = d3.sum(linked, r => r.m);
   const ccs = new Set(rows.map(r => r.cc)), withD = rows.filter(r => r.d1 != null), day = withD.length ? d3.sum(withD, r => r.m * r.d1) / d3.sum(withD, r => r.m) : null;
   const thr = MK.data.threshold >= 1 ? '$' + (+MK.data.threshold.toFixed(1)) + ' billion' : '$' + Math.round(MK.data.threshold * 1000) + ' million';
-  $('#mkIntro').innerHTML = `Every listed company worth <b>${thr} or more</b>, ${fmtN(rows.length)} in all, valued at the ${esc(mkWhen())} close. ${D.fromApp || APP ? 'The app downloads a fresh list each day.' : 'The list is refreshed every weekday.'} Each one is in the atlas: click a row for its profile. For ${fmtN(linked.length)} of them the atlas also records owners.`;
+  $('#mkIntro').innerHTML = `Every listed company worth <b>${thr} or more</b>, ${fmtN(rows.length)} in all, valued at the ${esc(mkWhen())} close. ${D.fromApp || APP ? 'The app downloads a fresh list each day.' : /(^|\.)github\.io$/.test(location.hostname) ? 'The list is refreshed every weekday.' : `The <a href="${SITE_URL}" target="_blank" rel="noopener">published atlas</a> is refreshed every weekday.`} Each one is in the atlas: click a row for its profile. For ${fmtN(linked.length)} of them the atlas also records owners.`;
   mkStatus();
   $('#mkKpis').innerHTML = `<div><dt>Companies</dt><dd>${fmtN(rows.length)}<small>based in ${ccs.size} countries</small></dd></div>
   <div><dt>Combined value</dt><dd>${fmtV(tot)}<small>${esc(rows[0].n)} is the largest at ${fmtV(rows[0].m)}</small></dd></div>
@@ -3033,12 +3037,17 @@ function mkReadInfo() { try { const i = APP ? JSON.parse(APP.liveInfo()) : null;
 const mkTime = ms => ms ? new Date(ms).toLocaleString('en-GB', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '';
 const dataDay = () => { const d = new Date(D.builtAt || D.asOf); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric', timeZone:'UTC'}); };
 function appUpdate(info) {
-  return info && info.latestCode > info.appCode && /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/releases\//.test(info.apk || '') ? info : null;
+  return info && info.latestCode > info.appCode && /^https:\/\/(github\.com\/[\w.-]+\/[\w.-]+\/releases\/|ninjapotato069\.github\.io\/ownership-atlas\/)/.test(info.apk || '') ? info : null;
 }
 function mkStatus() {
   const pill = $('#mkPill'); if (!pill) return;
   const info = MK.info;
-  if (!APP) { pill.className = 'mkpill on'; pill.innerHTML = `<i></i>Data of ${esc(dataDay())} · refreshed daily`; return; }
+  if (!APP) {   // the published site rebuilds every weekday; a copy elsewhere points to it
+    pill.className = 'mkpill on';
+    pill.innerHTML = /(^|\.)github\.io$/.test(location.hostname) ? `<i></i>Data of ${esc(dataDay())} · refreshed every weekday`
+      : `<i></i>Data of ${esc(dataDay())} · <a href="${SITE_URL}" target="_blank" rel="noopener">newest version</a>`;
+    return;
+  }
   const ok = info && !info.error;
   pill.className = 'mkpill ' + (ok ? 'on' : 'warn');
   pill.innerHTML = `<i></i>${D.fromApp ? 'Downloaded' : 'Built in'} · data of ${esc(dataDay())}`;
@@ -3103,7 +3112,7 @@ function dlDirectory() {
 // The whole dataset as two tables.
 function dlDataset(which) {
   if (which === 'nodes') saveFile('ownership-atlas-entities.csv', toCSV([['id', 'name', 'country', 'industry', 'ownership history', 'founded', 'ended', 'scale tier', 'headquarters', 'description', 'trivia'], ...nodes.map(n => [n.id, n.name, COUNTRY[n.cc].name, IND[n.ind], n.types.map(([y, t]) => y + ' ' + TYPE_LABEL[t]).join('; '), n.f, n.e || '', n.tier, n.city ? n.city.name : '', n.desc, n.triv || ''])]), 'text/csv');
-  else saveFile('ownership-atlas-links.csv', toCSV([['owner id', 'owner', 'owned id', 'owned', 'kind', 'from', 'until', 'stake %', 'votes %', 'value US$bn', 'status', 'note'], ...links.map(l => [l.s.id, l.s.name, l.t.id, l.t.name, KIND[l.k].label, l.y, l.e || '', l.p == null ? '' : l.p, l.vt == null ? '' : l.vt === 'C' ? 'controls' : l.vt, l.v == null ? '' : l.v, l.flag === 'P' ? 'pending' : l.flag === 'X' ? 'failed' : 'completed', l.note || ''])]), 'text/csv');
+  else saveFile('ownership-atlas-links.csv', toCSV([['owner id', 'owner', 'owned id', 'owned', 'kind', 'from', 'until', 'stake %', 'votes %', 'value US$bn', 'status', 'note'], ...links.map(l => [l.s.id, l.s.name, l.t.id, l.t.name, KIND[l.k].label, l.u ? '' : l.y, l.e || '', l.p == null ? '' : l.p, l.vt == null ? '' : l.vt === 'C' ? 'controls' : l.vt, l.v == null ? '' : l.v, l.flag === 'P' ? 'pending' : l.flag === 'X' ? 'failed' : 'completed', l.note || ''])]), 'text/csv');
 }
 
 // ---------- fallen giants ----------
@@ -3139,7 +3148,7 @@ function renderMethod() {
   <section><h3>Assumptions</h3><ul><li>Years are completion years. Announced-but-pending deals (for example Nvidia–Hugging Face, Union Pacific–Norfolk Southern, the IDBI Bank sale) appear as dashed links from their announcement year.</li><li>Stakes are as at the deal or the latest public figure noted in the deal text; holdings change constantly, so treat them as approximate.</li><li>Values are headline values in nominal US dollars at the time; INR figures are kept in the notes. Many deals have no disclosed value, so dollar totals understate the real flows.</li><li>"Scale" (node size) is a rough 1–5 tier based on market value or assets, used only for legibility.</li><li>Merged companies stay on the map as hollow outlines after they disappear, so you can still see who absorbed whom. Switch this off with "Absorbed &amp; defunct".</li><li>Passive index holdings by asset managers are mostly left out; only a few examples are shown.</li></ul></section>
   <section><h3>Financial figures</h3><ul><li><b>Revenue</b> is turnover for the latest available year. For listed companies it is the last 12 months, and <b>profit or loss</b> is pre-tax, both from companiesmarketcap.com on 20–21 October 2026. Pre-tax profit compares fairly across tax regimes; one-off gains and write-downs are included, and the biggest are noted (Vodafone Idea's AGR relief, Nissan's losses).</li><li>Unlisted and state-owned companies use their latest annual report or news coverage of it (mostly FY2025-26 for India); the period is shown with each figure. Figures marked ≈ are approximate, compiled from public reporting.</li><li><b>Market value</b> is on 20–21 October 2026; start-ups show their last private valuation. Banks' revenue is total income; insurers' is premium income where marked.</li><li>Loss-making listed companies come from the bottom of the same ranking (the biggest losses); smaller losses can be missing, which flatters the totals slightly.</li><li><b>Customers</b> are as each company counts them (customers, subscribers, users or accounts), so they are not strictly comparable.</li><li><b>Listed stakes</b> value an owner's holdings recorded in this atlas at today's market prices. Totals count each group once: subsidiaries consolidated by a parent in the dataset are left out.</li><li>Rupee figures: annual flows at ₹88.5 per dollar (FY2025-26 average); today's values at about ₹95 per dollar.</li></ul></section>
   <section><h3>Automatic updates</h3><p>The atlas rebuilds itself every weekday from its public repository, <a href="https://github.com/ninjapotato069/ownership-atlas" target="_blank" rel="noopener">github.com/ninjapotato069/ownership-atlas</a>. After the US close, GitHub Actions reads TradingView's stock screener market by market (prices delayed, values in US dollars). It keeps one line per company, dropping second listings, preference shares and depositary receipts, and adds every listed company worth $3 billion or more that the hand-built map lacks. It then looks each one up on Wikidata for its founding year, description and owners, and publishes the new atlas at <a href="https://ninjapotato069.github.io/ownership-atlas/" target="_blank" rel="noopener">ninjapotato069.github.io/ownership-atlas</a>. The Android app downloads it once a day.</p>
-  <p>${fmtN(nodes.filter(n => n.auto).length)} entities came in this way: ${fmtN(nodes.filter(n => n.auto && EXT[n.id].s).length)} listed companies and ${fmtN(nodes.filter(n => n.auto && !EXT[n.id].s).length)} of their owners, with ${fmtN(links.filter(l => l.note === 'Wikidata').length)} ownership links. Owners come from Wikidata's parent-organisation statements and from holders with a stated stake of 10% or more, or a state. A link with a start date counts as a deal of that year; one without is shown as a founder or parent link from the later of the two founding years. Volunteers keep Wikidata up and it can lag behind, so these links are labelled "Wikidata". The ${fmtN(nodes.filter(n => !n.auto).length)} entities mapped by hand, and their links, always take precedence.</p>
+  <p>${fmtN(nodes.filter(n => n.auto).length)} entities came in this way: ${fmtN(nodes.filter(n => n.auto && EXT[n.id].s).length)} listed companies and ${fmtN(nodes.filter(n => n.auto && !EXT[n.id].s).length)} of their owners, with ${fmtN(links.filter(l => l.note === 'Wikidata').length)} ownership links. Owners come from Wikidata's parent-organisation statements and from holders with a stated stake of 10% or more, or a state. A link with a start date counts as a deal of that year; one without is shown in the current year only, marked "year unknown". Volunteers keep Wikidata up and it can lag behind, so these links are labelled "Wikidata". The ${fmtN(nodes.filter(n => !n.auto).length)} entities mapped by hand, and their links, always take precedence.</p>
   <p>A company joins at $3 billion and leaves after 30 days below $1.5 billion. Where Wikidata has no founding year, the field is left blank and the company appears on the timeline only in the current year. Companies with no owners or holdings found stay out of the network picture; they are in the directory, search and Markets. For companies in the list, market value, and missing revenue, profit and staff numbers, come from the screener.</p></section>
   <section><h3>Coverage limits</h3><p>No dataset can hold every company in the world. Every listed company worth $3 billion or more is now included automatically (see Automatic updates), but its owners appear only where Wikidata records them. Checked on 21 October 2026, the hand-built part includes every company in the global top 200 by market value and the top 100 by revenue on companiesmarketcap.com (leaving out StoneX and Bullish, whose revenue is gross trading turnover, and Christian Dior SE, a holding company for LVMH), all of India's 100 most valuable listed companies, the largest unlisted private and state-owned giants, and the leaders of every industry listed in the filters (from chemicals, airlines and hospitals to sports, education and crypto), along with central banks, pension funds, development banks and foundations. Below that it is selective: expect gaps among mid-sized companies, co-operative banks beyond the two largest, and financial figures for many unlisted state companies and smaller Indian banks and insurers.</p></section>
   <section><h3>Recent events checked for this edition</h3><ul>

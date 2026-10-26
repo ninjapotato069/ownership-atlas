@@ -277,7 +277,7 @@ public class MainActivity extends Activity {
                     if (con.getResponseCode() != HttpURLConnection.HTTP_OK) continue;
                     JSONObject v = new JSONObject(new String(readAll(con.getInputStream(), 65536), Charset.forName("UTF-8")));
                     String apk = v.optString("apk", "");
-                    if (apk.startsWith("https://github.com/")) {
+                    if (apk.startsWith("https://github.com/") || apk.startsWith(SITE)) {
                         p.edit().putInt("latestCode", v.optInt("versionCode", 0)).putString("latestName", v.optString("versionName", ""))
                                 .putString("apk", apk).apply();
                     }

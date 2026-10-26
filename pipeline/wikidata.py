@@ -272,9 +272,15 @@ def owners(qids):
     return rels
 
 
-GOV_WORDS = re.compile(r'\b(government|ministry|ministries|state of|republic of|kingdom of|commonwealth of|federal|'
-                       r'municipal|city of|province|provincial|state-owned assets|sasac|sovereign wealth|public investment fund|'
-                       r'state agency|government agency|treasury|central bank|national bank of|state holding|state fund)\b', re.I)
+GOV_WORDS = re.compile(r'\b(government|ministry|ministries|federal agency|municipal|city of|province|provincial|'
+                       r'state-owned assets|sasac|sovereign wealth|public investment fund|state agency|government agency|'
+                       r'central bank|national bank of|state holding|state fund|department of the treasury|state treasury)\b', re.I)
+STATE_NAME = re.compile(r'^(?:the )?(?:state|republic|kingdom|commonwealth|people\'s republic|federal republic) of\b', re.I)
+# Not owners at all: treasury shares, the free float, custodian and nominee banks.
+PSEUDO = re.compile(r'\b(nominees?|custody|custodian|trustee services|master trust bank|trust (?:&|and) custody|'
+                    r'treasury (?:stock|shares)|public float|free float|clearstream|euroclear|securities depository|'
+                    r'depository trust|cede (?:&|and) co|hkscc|shareholders?|institutional investors?|'
+                    r'employee stock ownership|public company|general public)\b', re.I)
 FUND_WORDS = re.compile(r'\b(investment (?:fund|company|firm|manager|management|trust)|asset manag\w*|private equity|'
                         r'venture capital|hedge fund|pension|mutual fund|investment holding|holding company|'
                         r'family office|wealth fund|endowment)\b', re.I)
@@ -284,12 +290,12 @@ FOUNDATION_WORDS = re.compile(r'\b(foundation|charit\w*|non-?profit|trust fund|s
 def org_details(qids):
     """{qid: {l, d, f, cc, k}} for owners: k is human, country, gov, fund, foundation or company."""
     out = {}
-    q = ('SELECT ?o ?label ?desc ?human ?iso ?cc ?cc2 ?inc ?birth WHERE { VALUES ?o { %s } '
+    q = ('SELECT ?o ?label ?desc ?human ?iso ?cc ?cc2 ?inc ?birth ?end WHERE { VALUES ?o { %s } '
          'OPTIONAL { ?o rdfs:label ?label FILTER(LANG(?label) = "en") } '
          'OPTIONAL { ?o schema:description ?desc FILTER(LANG(?desc) = "en") } '
          'OPTIONAL { ?o wdt:P31 wd:Q5 . BIND(1 AS ?human) } OPTIONAL { ?o wdt:P297 ?iso } '
          'OPTIONAL { ?o wdt:P17 ?c . ?c wdt:P297 ?cc } OPTIONAL { ?o wdt:P27 ?c2 . ?c2 wdt:P297 ?cc2 } '
-         'OPTIONAL { ?o wdt:P571 ?inc } OPTIONAL { ?o wdt:P569 ?birth } }')
+         'OPTIONAL { ?o wdt:P571 ?inc } OPTIONAL { ?o wdt:P569 ?birth } OPTIONAL { ?o wdt:P576 ?end } }')
     for r in batched(sorted(qids), 120, lambda part: sparql(q % ' '.join('wd:' + i for i in part))):
         i = qid(r['o'])
         o = out.setdefault(i, {})
@@ -303,6 +309,8 @@ def org_details(qids):
         cc = r.get('cc') or r.get('cc2')
         if cc:
             o.setdefault('cc', cc)
+        if r.get('end') and year(r['end']):
+            o['x'] = year(r['end'])          # dissolved: its ownership statements are out of date
         y = year(r.get('inc')) or year(r.get('birth'))
         if y and 1000 <= y <= TODAY.year and (o.get('f') is None or y < o['f']):
             o['f'] = y
@@ -310,10 +318,12 @@ def org_details(qids):
         if o.get('k') == 'human':
             continue
         text = '%s %s' % (o.get('l', ''), o.get('d', ''))
-        if o.get('iso'):
+        if PSEUDO.search(o.get('l', '')):
+            o['k'] = 'none'
+        elif o.get('iso'):
             o['k'] = 'country'
             o['cc'] = o['iso']
-        elif GOV_WORDS.search(text):
+        elif GOV_WORDS.search(text) or STATE_NAME.search(o.get('l', '')):
             o['k'] = 'gov'
         elif FOUNDATION_WORDS.search(text):
             o['k'] = 'foundation'
@@ -331,7 +341,8 @@ def save_doc(cache, companies, orgs, rels, tried, full, partial=False):
            'full': (cache.get('full') if partial and full else TODAY.isoformat()) if full else cache.get('full'),
            'companies': companies, 'orgs': orgs, 'rels': rels, 'tried': tried,
            'note': 'From Wikidata (CC0). Owners: parent organisations (P749) and holders (P127) with a stated share of '
-                   '%d%% or more, or a state; statements with an end date are left out.' % int(MIN_STAKE * 100)}
+                   '%d%% or more, or a state; statements with an end date, owners that were dissolved and custodian or '
+                   'nominee holders are left out.' % int(MIN_STAKE * 100)}
     os.makedirs(LIVE, exist_ok=True)
     with open(OUT + '.part', 'w', encoding='utf-8') as f:
         json.dump(doc, f, ensure_ascii=False, separators=(',', ':'))
@@ -403,9 +414,13 @@ def main(mode):
     orgs.update(org_details(up2))
     seen, all_rels = set(), []
     for r in prev_rels + rels + rels2:
-        if r['k'] == 'owner' and (r['p'] is None or r['p'] < MIN_STAKE * 100) and \
-                orgs.get(r['s'], {}).get('k') not in ('country', 'gov'):
-            continue          # small or undisclosed holdings, except by a state
+        o = orgs.get(r['s'], {})
+        if o.get('k') == 'none' or o.get('x'):
+            continue          # not an owner, or an owner that no longer exists
+        if r['p'] is not None and r['p'] < MIN_STAKE * 100:
+            continue          # small holdings
+        if r['k'] == 'owner' and r['p'] is None and o.get('k') not in ('country', 'gov'):
+            continue          # undisclosed holdings count only for a state
         key = (r['s'], r['t'], r['k'])
         if key in seen or r['s'] == r['t']:
             continue
@@ -426,7 +441,9 @@ def main(mode):
 def annotate(code):
     if not os.environ.get('GITHUB_ACTIONS'):
         return
-    text = '\n'.join(LOG[-60:]).replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
+    # Annotations are cut at about 4 KB: the summary (last line) first, then the steps that are not per-exchange.
+    lines = [LOG[-1]] + [x for x in LOG[:-1] if 'matched by ticker' not in x] if LOG else []
+    text = '\n'.join(lines)[:3800].replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
     print('::%s title=Wikidata::%s' % ('notice' if code == 0 else 'warning', text), flush=True)
 
 
