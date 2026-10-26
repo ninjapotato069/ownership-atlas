@@ -45,7 +45,7 @@ node build/build.js          # dist/atlas.html and dist/data.json; copies of liv
 bash app/build.sh            # needs the Android SDK (ANDROID_HOME) or Debian's aapt/apksigner/zipalign/dalvik-exchange
 ```
 
-The APK is signed with the key in the repository secrets `ATLAS_KEYSTORE_B64` and `ATLAS_KEYSTORE_PASS`. Keep using the same key, or phones refuse the update.
+The APK is signed with the key in the repository secrets `ATLAS_KEYSTORE_B64` (the base64 of the PKCS#12 keystore) and `ATLAS_KEYSTORE_PASS`. Without them the app workflow skips the build. Keep using the same key, or phones refuse the update.
 
 ## Sources
 

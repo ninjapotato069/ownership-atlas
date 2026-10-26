@@ -1,6 +1,7 @@
 # Builds the Android app (signed with the key in the repository secrets) and, when the version in
 # app/AndroidManifest.xml is new, publishes it as a GitHub release, then refreshes the site so
 # version.json points at it. Phones with the app see a note and a download link.
+# Without the two signing secrets the job only reports that it skipped the build.
 name: Android app
 
 on:
@@ -44,9 +45,18 @@ jobs:
         env:
           ATLAS_KEYSTORE_B64: ${{ secrets.ATLAS_KEYSTORE_B64 }}
           ATLAS_KEYSTORE_PASS: ${{ secrets.ATLAS_KEYSTORE_PASS }}
-        run: bash app/build.sh
+        run: |
+          if [ -z "${ATLAS_KEYSTORE_B64}" ] || [ -z "${ATLAS_KEYSTORE_PASS}" ]; then
+            msg="No signing key in the repository secrets (ATLAS_KEYSTORE_B64, ATLAS_KEYSTORE_PASS), so no APK was built. Phones accept an update only when it is signed with the same key as the installed app."
+            echo "::notice title=Android app::${msg}"
+            echo "${msg}" >> "$GITHUB_STEP_SUMMARY"
+            echo "NO_KEY=1" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          bash app/build.sh
 
       - name: Publish a release when the version is new
+        if: env.NO_KEY != '1'
         working-directory: src
         env:
           GH_TOKEN: ${{ github.token }}
