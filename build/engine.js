@@ -210,7 +210,8 @@ function makeEngine(o) {
   // Brokers: betweenness centrality (Brandes) on the undirected network of active links in year Y.
   function brokers(Y) {
     var c = atYear(Y); if (c.bw) return c.bw;
-    var live = nodes.filter(function (n) { return o.alive(n, Y); }), idx = new Map(live.map(function (n, i) { return [n, i]; }));
+    // entities without any link cannot broker anything; leaving them out keeps this quick on large datasets
+    var live = nodes.filter(function (n) { return o.alive(n, Y) && (n.out.length || n.inn.length); }), idx = new Map(live.map(function (n, i) { return [n, i]; }));
     var adj = live.map(function () { return []; }), seen = new Set();
     live.forEach(function (n) { n.out.forEach(function (l) {
       if (l.flag === 'X' || l.k === 'asset' || l.k === 'mrg' || !o.activeAt(l, Y)) return;

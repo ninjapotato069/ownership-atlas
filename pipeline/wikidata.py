@@ -3,7 +3,7 @@
 and who owns them (parent organisations, and holders with a stated stake of 10% or more).
 
 Companies are matched to Wikidata by ISIN when the screener gives one, then by stock exchange (ISO 10383
-market identifier code) and ticker, then, for a limited number of the largest leftovers, by name search
+market identifier code, P7534) and ticker, then, for a limited number of the largest leftovers, by name search
 checked against country. Owners are followed two levels up (a subsidiary's parent and that parent's own
 owners). Standard library only.
 
@@ -34,7 +34,7 @@ FULL_EVERY_DAYS = 7
 LOG = []
 TODAY = dt.datetime.now(dt.timezone.utc).date()
 
-# Screener exchange prefix -> ISO 10383 market identifier codes, as Wikidata records them on exchanges (P2283).
+# Screener exchange prefix -> ISO 10383 market identifier codes, as Wikidata records them on exchanges (P7534).
 MICS = {
     'NASDAQ': ['XNAS'], 'NYSE': ['XNYS'], 'AMEX': ['XASE'], 'CBOE': ['BATS', 'XCBO'], 'TSX': ['XTSE'],
     'TSXV': ['XTSX'], 'NEO': ['NEOE'], 'BMV': ['XMEX'], 'BIVA': ['BIVA'], 'BMFBOVESPA': ['BVMF'], 'BCBA': ['XBUE'],
@@ -90,6 +90,25 @@ def sparql(query):
     return out
 
 
+def batched(items, size, run):
+    """Runs run(batch) over items in batches; a batch that fails (usually a time-out) is split in two and
+    retried, down to single items, which are then skipped. Returns the combined rows."""
+    out, queue, skipped = [], [list(items[i:i + size]) for i in range(0, len(items), size)], 0
+    while queue:
+        part = queue.pop(0)
+        try:
+            out += run(part)
+        except Exception as e:
+            if len(part) > 1:
+                half = len(part) // 2
+                queue[:0] = [part[:half], part[half:]]
+            else:
+                skipped += 1
+    if skipped:
+        log('  %d items skipped after repeated failures' % skipped)
+    return out
+
+
 def qid(uri):
     return uri.rsplit('/', 1)[-1] if uri else None
 
@@ -125,14 +144,16 @@ def match_isin(want):
     found = {}
     by_isin = {}
     for s, i in want.items():
-        by_isin.setdefault(i, []).append(s)
-    for part in chunks(by_isin, 250):
-        vals = ' '.join('"%s"' % i for i in part if re.match(r'^[A-Z0-9]{12}$', i))
-        if not vals:
-            continue
-        for r in sparql('SELECT ?item ?isin WHERE { VALUES ?isin { %s } ?item wdt:P946 ?isin . }' % vals):
-            for s in by_isin.get(r['isin'], []):
-                found.setdefault(s, qid(r['item']))
+        if re.match(r'^[A-Z0-9]{12}$', i or ''):
+            by_isin.setdefault(i, []).append(s)
+    q = 'SELECT ?item ?isin WHERE { VALUES ?isin { %s } ?item wdt:P946 ?isin . }'
+    hits = {}
+    for r in batched(sorted(by_isin), 250, lambda part: sparql(q % ' '.join('"%s"' % i for i in part))):
+        hits.setdefault(r['isin'], set()).add(qid(r['item']))
+    for isin, items in hits.items():
+        if len(items) == 1:               # an ISIN on two items is a share class and its company: ambiguous
+            for s in by_isin[isin]:
+                found[s] = next(iter(items))
     return found
 
 
@@ -146,7 +167,7 @@ def match_tickers(syms):
     found = {}
     for ex, wanted in sorted(by_ex.items()):
         vals = ' '.join('"%s"' % m for m in MICS[ex])
-        q = ('SELECT ?item ?ticker WHERE { VALUES ?mic { %s } ?x wdt:P2283 ?mic . '
+        q = ('SELECT ?item ?ticker WHERE { VALUES ?mic { %s } ?x wdt:P7534 ?mic . '
              '?item p:P414 ?st . ?st ps:P414 ?x ; pq:P249 ?ticker . FILTER NOT EXISTS { ?st pq:P582 [] } }' % vals)
         try:
             rows = sparql(q)
@@ -199,52 +220,55 @@ def match_names(cands, cap):
 def details(qids):
     """{qid: {l, d, f, cc, w}} for companies."""
     out = {}
-    for part in chunks(sorted(qids), 200):
-        q = ('SELECT ?item ?label ?desc ?inc ?cc ?web WHERE { VALUES ?item { %s } '
-             'OPTIONAL { ?item rdfs:label ?label FILTER(LANG(?label) = "en") } '
-             'OPTIONAL { ?item schema:description ?desc FILTER(LANG(?desc) = "en") } '
-             'OPTIONAL { ?item wdt:P571 ?inc } OPTIONAL { ?item wdt:P17 ?c . ?c wdt:P297 ?cc } '
-             'OPTIONAL { ?item wdt:P856 ?web } }' % ' '.join('wd:' + i for i in part))
-        for r in sparql(q):
-            i = qid(r['item'])
-            o = out.setdefault(i, {})
-            if r.get('label'):
-                o['l'] = r['label']
-            if r.get('desc'):
-                o['d'] = r['desc']
-            y = year(r.get('inc'))
-            if y and 1500 <= y <= TODAY.year and (o.get('f') is None or y < o['f']):
-                o['f'] = y
-            if r.get('cc'):
-                o.setdefault('cc', r['cc'])
-            if r.get('web') and 'w' not in o and len(r['web']) < 200:
-                o['w'] = r['web']
+    q = ('SELECT ?item ?label ?desc ?inc ?cc ?web WHERE { VALUES ?item { %s } '
+         'OPTIONAL { ?item rdfs:label ?label FILTER(LANG(?label) = "en") } '
+         'OPTIONAL { ?item schema:description ?desc FILTER(LANG(?desc) = "en") } '
+         'OPTIONAL { ?item wdt:P571 ?inc } OPTIONAL { ?item wdt:P17 ?c . ?c wdt:P297 ?cc } '
+         'OPTIONAL { ?item wdt:P856 ?web } }')
+    for r in batched(sorted(qids), 150, lambda part: sparql(q % ' '.join('wd:' + i for i in part))):
+        i = qid(r['item'])
+        o = out.setdefault(i, {})
+        if r.get('label'):
+            o['l'] = r['label']
+        if r.get('desc'):
+            o['d'] = r['desc']
+        y = year(r.get('inc'))
+        if y and 1500 <= y <= TODAY.year and (o.get('f') is None or y < o['f']):
+            o['f'] = y
+        if r.get('cc'):
+            o.setdefault('cc', r['cc'])
+        if r.get('web') and 'w' not in o and len(r['web']) < 200:
+            o['w'] = r['web']
     return out
 
 
 def owners(qids):
     """[{s: owner, t: owned, k: parent|owner, p: share 0-100 or None, y: start year}]"""
     rels = []
-    for part in chunks(sorted(qids), 150):
-        q = ('SELECT ?item ?owner ?kind ?prop ?unit ?start WHERE { VALUES ?item { %s } '
-             '{ ?item p:P749 ?st . ?st ps:P749 ?owner . BIND("parent" AS ?kind) } UNION '
-             '{ ?item p:P127 ?st . ?st ps:P127 ?owner . BIND("owner" AS ?kind) } '
-             '?st wikibase:rank ?rank . FILTER(?rank != wikibase:DeprecatedRank) '
-             'FILTER NOT EXISTS { ?st pq:P582 [] } FILTER(isIRI(?owner)) '
-             'OPTIONAL { ?st pqv:P1107 ?pv . ?pv wikibase:quantityAmount ?prop . OPTIONAL { ?pv wikibase:quantityUnit ?unit } } '
-             'OPTIONAL { ?st pq:P580 ?start } }' % ' '.join('wd:' + i for i in part))
-        for r in sparql(q):
-            p = None
-            if r.get('prop'):
-                try:
-                    v = float(r['prop'])
-                    pct = 'Q11229' in (r.get('unit') or '') or v > 1.0
-                    p = v if pct else v * 100
-                except ValueError:
-                    p = None
-                if p is not None and not (0 < p <= 100):
-                    p = None
-            rels.append({'s': qid(r['owner']), 't': qid(r['item']), 'k': r['kind'], 'p': p, 'y': year(r.get('start'))})
+    # Two light queries (parents, then holders) rather than one UNION, which Wikidata often times out on.
+    q = ('SELECT ?item ?owner ?prop ?unit ?start WHERE { VALUES ?item { %s } '
+         '?item p:%s ?st . ?st ps:%s ?owner . FILTER(isIRI(?owner)) '
+         'FILTER NOT EXISTS { ?st pq:P582 [] } FILTER NOT EXISTS { ?st wikibase:rank wikibase:DeprecatedRank } '
+         'OPTIONAL { ?st pqv:P1107 ?pv . ?pv wikibase:quantityAmount ?prop . OPTIONAL { ?pv wikibase:quantityUnit ?unit } } '
+         'OPTIONAL { ?st pq:P580 ?start } }')
+    rows = []
+    for prop, kind in (('P749', 'parent'), ('P127', 'owner')):
+        got = batched(sorted(qids), 80, lambda part: sparql(q % (' '.join('wd:' + i for i in part), prop, prop)))
+        for r in got:
+            r['kind'] = kind
+        rows += got
+    for r in rows:
+        p = None
+        if r.get('prop'):
+            try:
+                v = float(r['prop'])
+                pct = 'Q11229' in (r.get('unit') or '') or v > 1.0
+                p = v if pct else v * 100
+            except ValueError:
+                p = None
+            if p is not None and not (0 < p <= 100):
+                p = None
+        rels.append({'s': qid(r['owner']), 't': qid(r['item']), 'k': r['kind'], 'p': p, 'y': year(r.get('start'))})
     return rels
 
 
@@ -260,29 +284,28 @@ FOUNDATION_WORDS = re.compile(r'\b(foundation|charit\w*|non-?profit|trust fund|s
 def org_details(qids):
     """{qid: {l, d, f, cc, k}} for owners: k is human, country, gov, fund, foundation or company."""
     out = {}
-    for part in chunks(sorted(qids), 150):
-        q = ('SELECT ?o ?label ?desc ?human ?iso ?cc ?cc2 ?inc ?birth WHERE { VALUES ?o { %s } '
-             'OPTIONAL { ?o rdfs:label ?label FILTER(LANG(?label) = "en") } '
-             'OPTIONAL { ?o schema:description ?desc FILTER(LANG(?desc) = "en") } '
-             'OPTIONAL { ?o wdt:P31 wd:Q5 . BIND(1 AS ?human) } OPTIONAL { ?o wdt:P297 ?iso } '
-             'OPTIONAL { ?o wdt:P17 ?c . ?c wdt:P297 ?cc } OPTIONAL { ?o wdt:P27 ?c2 . ?c2 wdt:P297 ?cc2 } '
-             'OPTIONAL { ?o wdt:P571 ?inc } OPTIONAL { ?o wdt:P569 ?birth } }' % ' '.join('wd:' + i for i in part))
-        for r in sparql(q):
-            i = qid(r['o'])
-            o = out.setdefault(i, {})
-            for a, b in (('label', 'l'), ('desc', 'd')):
-                if r.get(a):
-                    o[b] = r[a]
-            if r.get('human'):
-                o['k'] = 'human'
-            if r.get('iso'):
-                o['iso'] = r['iso']
-            cc = r.get('cc') or r.get('cc2')
-            if cc:
-                o.setdefault('cc', cc)
-            y = year(r.get('inc')) or year(r.get('birth'))
-            if y and 1000 <= y <= TODAY.year and (o.get('f') is None or y < o['f']):
-                o['f'] = y
+    q = ('SELECT ?o ?label ?desc ?human ?iso ?cc ?cc2 ?inc ?birth WHERE { VALUES ?o { %s } '
+         'OPTIONAL { ?o rdfs:label ?label FILTER(LANG(?label) = "en") } '
+         'OPTIONAL { ?o schema:description ?desc FILTER(LANG(?desc) = "en") } '
+         'OPTIONAL { ?o wdt:P31 wd:Q5 . BIND(1 AS ?human) } OPTIONAL { ?o wdt:P297 ?iso } '
+         'OPTIONAL { ?o wdt:P17 ?c . ?c wdt:P297 ?cc } OPTIONAL { ?o wdt:P27 ?c2 . ?c2 wdt:P297 ?cc2 } '
+         'OPTIONAL { ?o wdt:P571 ?inc } OPTIONAL { ?o wdt:P569 ?birth } }')
+    for r in batched(sorted(qids), 120, lambda part: sparql(q % ' '.join('wd:' + i for i in part))):
+        i = qid(r['o'])
+        o = out.setdefault(i, {})
+        for a, b in (('label', 'l'), ('desc', 'd')):
+            if r.get(a):
+                o[b] = r[a]
+        if r.get('human'):
+            o['k'] = 'human'
+        if r.get('iso'):
+            o['iso'] = r['iso']
+        cc = r.get('cc') or r.get('cc2')
+        if cc:
+            o.setdefault('cc', cc)
+        y = year(r.get('inc')) or year(r.get('birth'))
+        if y and 1000 <= y <= TODAY.year and (o.get('f') is None or y < o['f']):
+            o['f'] = y
     for o in out.values():
         if o.get('k') == 'human':
             continue
@@ -302,6 +325,18 @@ def org_details(qids):
 
 
 # ---------------------------------------------------------------- run
+
+def save_doc(cache, companies, orgs, rels, tried, full, partial=False):
+    doc = {'v': 1, 'updated': TODAY.isoformat(),
+           'full': (cache.get('full') if partial and full else TODAY.isoformat()) if full else cache.get('full'),
+           'companies': companies, 'orgs': orgs, 'rels': rels, 'tried': tried,
+           'note': 'From Wikidata (CC0). Owners: parent organisations (P749) and holders (P127) with a stated share of '
+                   '%d%% or more, or a state; statements with an end date are left out.' % int(MIN_STAKE * 100)}
+    os.makedirs(LIVE, exist_ok=True)
+    with open(OUT + '.part', 'w', encoding='utf-8') as f:
+        json.dump(doc, f, ensure_ascii=False, separators=(',', ':'))
+    os.replace(OUT + '.part', OUT)
+
 
 def main(mode):
     uni = load('universe.json', {}).get('members', {})
@@ -350,6 +385,7 @@ def main(mode):
     for s, q in found.items():
         companies[s] = dict(det.get(q, {}), q=q)
     log('  companies with Wikidata details: %d' % len(companies))
+    save_doc(cache, companies, cache.get('orgs', {}) if not full else {}, cache.get('rels', []) if not full else [], tried, full, partial=True)
 
     # Owners: two levels up. Re-read for every known company on a full run, only new ones otherwise.
     prev_rels = [] if full else cache.get('rels', [])
@@ -377,13 +413,7 @@ def main(mode):
     for q in list(orgs):
         if q in known:
             orgs.pop(q)
-    doc = {'v': 1, 'updated': TODAY.isoformat(), 'full': TODAY.isoformat() if full else cache.get('full'),
-           'companies': companies, 'orgs': orgs, 'rels': all_rels, 'tried': tried,
-           'note': 'From Wikidata (CC0). Owners: parent organisations (P749) and holders (P127) with a stated share of '
-                   '%d%% or more, or a state; statements with an end date are left out.' % int(MIN_STAKE * 100)}
-    os.makedirs(LIVE, exist_ok=True)
-    with open(OUT, 'w', encoding='utf-8') as f:
-        json.dump(doc, f, ensure_ascii=False, separators=(',', ':'))
+    save_doc(cache, companies, orgs, all_rels, tried, full)
     kinds = {}
     for o in orgs.values():
         kinds[o.get('k')] = kinds.get(o.get('k'), 0) + 1
