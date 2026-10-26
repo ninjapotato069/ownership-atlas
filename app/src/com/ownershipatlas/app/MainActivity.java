@@ -257,6 +257,8 @@ public class MainActivity extends Activity {
                         p.edit().putString("etag", con.getHeaderField("ETag")).putString("builtAt", builtAt).putLong("lastOk", now).apply();
                         error = "";
                         break;
+                    } else if (code == HttpURLConnection.HTTP_NOT_FOUND) {
+                        error = "The daily atlas is not online yet. The app will try again later.";
                     } else {
                         error = "The atlas site answered " + code + ". The app will try again later.";
                     }

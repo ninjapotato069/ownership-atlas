@@ -3421,7 +3421,9 @@ function init() {
   if (window.d3) {
     zoom = d3.zoom().scaleExtent([0.15, 9]).on('zoom', e => { tf = e.transform; });
     d3.select(canvas).call(zoom).on('dblclick.zoom', null);
-    initSim(); syncSim(1); sim.stop(); for (let i = 0; i < 260; i++) sim.tick(); sim.alpha(.05).restart();
+    // warm-up before the first frame: fewer steps for a larger network (the layout keeps settling on screen)
+    const warm = Math.max(130, Math.min(260, Math.round(260 * 1300 / Math.max(1, vis.arr.length))));
+    initSim(); syncSim(1); sim.stop(); for (let i = 0; i < warm; i++) sim.tick(); sim.alpha(warm < 260 ? .12 : .05).restart();
     fitTo(vis.arr, 24, 0);
     new ResizeObserver(() => { resize(); }).observe(wrap);
     let rzT = 0, lastW = innerWidth; addEventListener('resize', () => { clearTimeout(rzT); rzT = setTimeout(() => { if (innerWidth !== lastW && state.tab === 'deals') renderDeals(); if (innerWidth !== lastW && state.tab === 'fin') renderFin(); if (innerWidth !== lastW && state.tab === 'markets') renderMarkets(); lastW = innerWidth; }, 200); });
