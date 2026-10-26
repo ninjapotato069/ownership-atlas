@@ -12,7 +12,16 @@ OUT=dist/OwnershipAtlas-$VERSION.apk
 
 SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
 if [ -n "$SDK" ] && [ -d "$SDK/build-tools" ]; then
-  BT="$SDK/build-tools/$(ls "$SDK/build-tools" | sort -V | tail -1)"
+  # newest build tools that still include aapt (and d8)
+  BT=""
+  for v in $(ls "$SDK/build-tools" | sort -V -r); do
+    if [ -x "$SDK/build-tools/$v/aapt" ] && [ -x "$SDK/build-tools/$v/d8" ]; then BT="$SDK/build-tools/$v"; break; fi
+  done
+  if [ -z "$BT" ]; then
+    yes | "$SDK/cmdline-tools/latest/bin/sdkmanager" "build-tools;34.0.0" >/dev/null
+    BT="$SDK/build-tools/34.0.0"
+  fi
+  echo "build tools: $BT"
   AJAR="$SDK/platforms/$(ls "$SDK/platforms" | grep -E '^android-[0-9]+$' | sort -V | tail -1)/android.jar"
   AAPT="$BT/aapt"; ZIPALIGN="$BT/zipalign"; APKSIGNER="$BT/apksigner"
   dex() { "$BT/d8" --min-api 24 --lib "$AJAR" --output build/dex $(find build/obj -name '*.class'); }

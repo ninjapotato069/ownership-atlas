@@ -130,9 +130,14 @@ for (const r of wd.rels) {
   const s = qToId.get(r.s), t = qToId.get(r.t);
   if (!s || !t || s === t || (!ext[s] && !ext[t]) || pairs.has(s + '>' + t) || pairs.has(t + '>' + s)) continue;
   const S = ids.get(s), T = ids.get(t), p = r.p != null ? Math.round(r.p * 100) / 100 : null;
-  const y = r.y && r.y >= S[5] && r.y >= T[5] && r.y <= YNOW ? r.y : Math.max(S[5], T[5], YNOW);
+  if (S[6] || T[6]) continue;                                   // a hand-built entity that no longer exists
   const parent = r.k === 'parent';
-  const l = [s, t, y, 0, p, parent ? 'fnd' : 'stk', null, 'Wikidata', ''];
+  // With a start date it is an event of that year (control bought, or a stake taken). Without one it is a
+  // long-standing owner: shown from the later founding year, like hand-built founder links, and not a deal.
+  const dated = r.y && r.y >= S[5] && r.y >= T[5] && r.y <= YNOW;
+  const y = dated ? r.y : Math.max(S[5], T[5]);
+  const kind = !dated ? 'fnd' : parent && (p == null || p > 50) ? 'acq' : 'stk';
+  const l = [s, t, y, 0, p, kind, null, 'Wikidata', ''];
   if (parent && (p == null || p > 50)) l.push('C');
   links.push(l); pairs.add(s + '>' + t); wdLinks++;
 }

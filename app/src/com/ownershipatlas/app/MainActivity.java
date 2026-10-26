@@ -270,21 +270,23 @@ public class MainActivity extends Activity {
                 }
             }
             // Newest app release (small file; failures here are not reported).
-            HttpURLConnection con = null;
-            try {
-                con = open(SITE + "version.json", null);
-                if (con.getResponseCode() == HttpURLConnection.HTTP_OK) {
+            for (String base : new String[]{SITE, RAW}) {
+                HttpURLConnection con = null;
+                try {
+                    con = open(base + "version.json", null);
+                    if (con.getResponseCode() != HttpURLConnection.HTTP_OK) continue;
                     JSONObject v = new JSONObject(new String(readAll(con.getInputStream(), 65536), Charset.forName("UTF-8")));
                     String apk = v.optString("apk", "");
                     if (apk.startsWith("https://github.com/")) {
                         p.edit().putInt("latestCode", v.optInt("versionCode", 0)).putString("latestName", v.optString("versionName", ""))
                                 .putString("apk", apk).apply();
                     }
+                    break;
+                } catch (Exception ignored) {
+                    // Try the other address, then again next time.
+                } finally {
+                    if (con != null) con.disconnect();
                 }
-            } catch (Exception ignored) {
-                // Try again next time.
-            } finally {
-                if (con != null) con.disconnect();
             }
             p.edit().putLong("lastTry", now).putString("error", error).apply();
             return info(c, manual);

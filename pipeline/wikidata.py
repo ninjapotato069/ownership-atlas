@@ -360,7 +360,8 @@ def main(mode):
     companies = {} if full else cache.get('companies', {})
     tried = {} if full else cache.get('tried', {})
     syms = sorted(set(uni) | set(amap))
-    todo = [s for s in syms if s not in companies and (full or tried.get(s) != TODAY.isoformat())]
+    # Daily runs look up only companies never tried; those Wikidata could not match are retried weekly (full run).
+    todo = [s for s in syms if s not in companies and (full or s not in tried)]
     log('wikidata: %s run, %d companies to look up (%d known)' % ('full' if full else 'incremental', len(todo), len(companies)))
 
     found = {}
