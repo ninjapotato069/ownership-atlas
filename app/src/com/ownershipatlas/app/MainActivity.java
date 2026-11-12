@@ -104,6 +104,7 @@ public class MainActivity extends Activity {
     /** SHA-256 of the downloaded page now on screen ("" while the built-in page is). */
     private static volatile String servedSha = "";
     private static String builtInData;
+    private static String builtInPage;
 
     private WebView web;
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -230,7 +231,7 @@ public class MainActivity extends Activity {
             o.put("pageLive", servedSha.length() > 0);
             // a newer page was installed while this one is on screen: the page offers a reload
             o.put("pageUpdated", sha.length() > 0 && !sha.equals(servedSha) && !sha.equals(p.getString("pageBad", ""))
-                    && pageFile(c).isFile());
+                    && p.getInt("pageForCode", -1) == appCode(c) && pageFile(c).isFile());
         } catch (JSONException ignored) {
             // Only plain values are put.
         }
@@ -339,8 +340,12 @@ public class MainActivity extends Activity {
                 con = null;
                 String sha = m.optString("sha256", "");
                 if (!sha.matches("[0-9a-f]{64}") || m.optInt("schema") != SCHEMA || m.optInt("minCode", Integer.MAX_VALUE) > appCode(c)) return;
+                if (sha.equals(builtInPage(c))) {                 // the page inside this app is the current one
+                    if (pageFile(c).delete() || p.contains("pageSha")) p.edit().remove("pageSha").remove("pageTries").apply();
+                    return;
+                }
                 if (sha.equals(p.getString("pageBad", ""))) return;
-                if (sha.equals(p.getString("pageSha", "")) && pageFile(c).isFile()) return;
+                if (sha.equals(p.getString("pageSha", "")) && p.getInt("pageForCode", -1) == appCode(c) && pageFile(c).isFile()) return;
                 con = open(base + "app/page.html", null);
                 if (con.getResponseCode() != HttpURLConnection.HTTP_OK) continue;
                 byte[] body = readAll(con.getInputStream(), PAGE_MAX);
@@ -357,7 +362,8 @@ public class MainActivity extends Activity {
                     out.close();
                 }
                 if (!tmp.renameTo(f)) return;
-                p.edit().putString("pageSha", sha).putInt("pageTries", 0).putLong("pageAt", System.currentTimeMillis()).apply();
+                p.edit().putString("pageSha", sha).putInt("pageTries", 0).putInt("pageForCode", appCode(c))
+                        .putLong("pageAt", System.currentTimeMillis()).apply();
                 return;
             } catch (Exception ignored) {
                 // Try the other address, then again next time.
@@ -379,6 +385,7 @@ public class MainActivity extends Activity {
         SharedPreferences p = prefs(c);
         String sha = p.getString("pageSha", "");
         if (sha.length() == 0 || !pageFile(c).isFile() || sha.equals(p.getString("pageBad", ""))) return false;
+        if (p.getInt("pageForCode", -1) != appCode(c)) return false;   // the app was updated: its own page is newer
         if (p.getInt("pageTries", 0) >= PAGE_TRIES) {
             p.edit().putString("pageBad", sha).apply();
             return false;
@@ -776,6 +783,18 @@ public class MainActivity extends Activity {
         } catch (IOException e) {
             return empty(404, "Not Found");
         }
+    }
+
+    /** SHA-256 of the page built into the app (assets/page-sha.txt). */
+    private static String builtInPage(Context c) {
+        if (builtInPage == null) {
+            try {
+                builtInPage = new String(readAll(c.getAssets().open("page-sha.txt"), 256), UTF8).trim();
+            } catch (IOException e) {
+                builtInPage = "";
+            }
+        }
+        return builtInPage;
     }
 
     /** Build time of the data built into the app (assets/data-built.txt). */

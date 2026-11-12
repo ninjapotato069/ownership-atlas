@@ -23,7 +23,10 @@ fs.rmSync(OUT, {recursive: true, force: true});
 fs.mkdirSync(path.join(OUT, 'fonts'), {recursive: true});
 for (const [, file, , , , from] of FACES) fs.copyFileSync(path.join(FROM[from], file), path.join(OUT, 'fonts', file));
 fs.copyFileSync(path.join(ROOT, 'build', 'node_modules', 'd3', 'dist', 'd3.min.js'), path.join(OUT, 'd3.min.js'));
-fs.writeFileSync(path.join(OUT, 'index.html'), appPage(shell));
+const page = appPage(shell);
+fs.writeFileSync(path.join(OUT, 'index.html'), page);
+// the app downloads a page only when the published one differs from this one
+fs.writeFileSync(path.join(OUT, 'page-sha.txt'), require('crypto').createHash('sha256').update(page).digest('hex'));
 fs.writeFileSync(path.join(OUT, 'data.json'), data);
 fs.writeFileSync(path.join(OUT, 'data-built.txt'), builtAt);
 const kb = f => Math.round(fs.statSync(path.join(OUT, f)).size / 1024);

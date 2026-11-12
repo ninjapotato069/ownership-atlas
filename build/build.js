@@ -268,7 +268,7 @@ if (news && news.v === 1) {
   };
   const safe = u => typeof u === 'string' && /^https?:\/\//.test(u) ? u : null;
   // the same filter as pipeline/news.py, for headlines stored before it existed
-  const JUNK = /\b(?:form\s?(?:4|3|5|6-k|8-k|10-[kq]|13[dfg]|144|s-1|f-1)|sec (?:form|filing)|indicator by|strategy by|options? research recommendation|insider (?:buying|selling)|shares? (?:sold|bought|acquired) by|\d[\d,.]*\s+shares\s+of|stock position in|(?:new|raised|lowered|trimmed|boosted|cut|increased|reduced|grows|shrinks|lifts)\s+(?:its\s+)?(?:stake|position|holdings)\s+in|has \$[\d.,]+\s*(?:million|billion|[mbk])\s+(?:stock\s+)?(?:position|stake|holdings)\s+in)\b/i;
+  const JUNK = /\b(?:form\s?(?:4|3|5|6-k|8-k|10-[kq]|13[dfg]|144|s-1|f-1)|sec (?:form|filing)|indicator by|strategy by|options? research recommendation|insider (?:buying|selling)|shares? (?:sold|bought|acquired) by|stock price, news|quote (?:&|and) history|stock forum|stock quote|live (?:stock|share) price|price today|\d[\d,.]*\s+shares\s+of|stock position in|(?:new|raised|lowered|trimmed|boosted|cut|increased|reduced|grows|shrinks|lifts)\s+(?:its\s+)?(?:stake|position|holdings)\s+in|has \$[\d.,]+\s*(?:million|billion|[mbk])\s+(?:stock\s+)?(?:position|stake|holdings)\s+in)\b/i;
   const JUNK_SRC = new Set(['marketbeat', 'defense world', 'the ai journal', 'etf daily news', 'zolmax', 'tickerreport', 'the lincolnian online', 'the cerbat gem', 'the markets daily', 'modern readers', 'stocks register']);
   // one story told by many outlets: the same entities, and most of the same words
   const WORD_STOP = new Set('the and for with from that this into over after amid says said will could would its their about more than report reports reportedly talks deal deals news'.split(' '));
@@ -300,6 +300,8 @@ if (news && news.v === 1) {
       dealsKept++;
     } else if (x.k === 'market') {
       const e = find(it.t); if (e.length) it.e = e.slice(0, 4);
+      const w = wordsOf(it.t);   // the same market report from several outlets: keep the first
+      if (day.items.some(o => { if (o.k !== 'market') return false; const v = wordsOf(o.t); let n = 0; for (const x of w) if (v.has(x)) n++; return n / Math.max(1, w.size + v.size - n) >= 0.5; })) continue;
     } else continue;
     day.items.push(it); kept++;
   }

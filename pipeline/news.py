@@ -52,6 +52,7 @@ MARKET_QUERIES = ['"Wall Street" stocks', 'Sensex Nifty', '"European shares" OR 
 # Not news: filings, trading notices, holdings reports of funds ("XYZ LLC Acquires 1,234 Shares of ..."), indicators.
 JUNK = re.compile(r'\b(?:form\s?(?:4|3|5|6-k|8-k|10-[kq]|13[dfg]|144|s-1|f-1)|sec (?:form|filing)|indicator by|strategy by|'
                   r'options? research recommendation|insider (?:buying|selling)|shares? (?:sold|bought|acquired) by|'
+                  r'stock price, news|quote (?:&|and) history|stock forum|stock quote|live (?:stock|share) price|price today|'
                   r'\d[\d,.]*\s+shares\s+of|stock position in|'
                   r'(?:new|raised|lowered|trimmed|boosted|cut|increased|reduced|grows|shrinks|lifts)\s+(?:its\s+)?(?:stake|position|holdings)\s+in|'
                   r'has \$[\d.,]+\s*(?:million|billion|[mbk])\s+(?:stock\s+)?(?:position|stake|holdings)\s+in)\b', re.I)
