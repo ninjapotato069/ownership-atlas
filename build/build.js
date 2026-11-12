@@ -238,7 +238,10 @@ if (news && news.v === 1) {
       if (x.length >= 3 && !STOP.has(x.toLowerCase())) put(x, n[0]);
     }
   }
-  const phrases = [...names.keys()].filter(k => names.get(k).size === 1).sort((a, b) => b.length - a.length);
+  // One-word names that are also ordinary words in headlines ("Target", "Visa", "Sea", "Strategy", "News"):
+  // these entities are found by a longer form of their name only.
+  const COMMON_ONE = new Set('affirm ant ball block booking carnival carrier circle coherent compass continental crane crown cruise cursor disco discovery dover dow elm equitable eternal evolution fact flex fox freedom frontline grab hexagon mars metro news next nova orange orion partners progressive recruit sage screen sea sharp sky southern sprint strategy swift target times titan toast torrent travelers true urban visa waters wise'.split(' '));
+  const phrases = [...names.keys()].filter(k => names.get(k).size === 1 && !COMMON_ONE.has(k)).sort((a, b) => b.length - a.length);
   const firstWord = new Map();
   for (const k of phrases) { const w = k.split(' ')[0]; (firstWord.get(w) || firstWord.set(w, []).get(w)).push(k); }
   // a one-word name must be written with a capital letter in the headline ("Apple", not "apple")
@@ -264,12 +267,25 @@ if (news && news.v === 1) {
     return [...out];
   };
   const safe = u => typeof u === 'string' && /^https?:\/\//.test(u) ? u : null;
+  // the same filter as pipeline/news.py, for headlines stored before it existed
+  const JUNK = /\b(?:form\s?(?:4|3|5|6-k|8-k|10-[kq]|13[dfg]|144|s-1|f-1)|sec (?:form|filing)|indicator by|strategy by|options? research recommendation|insider (?:buying|selling)|shares? (?:sold|bought|acquired) by|\d[\d,.]*\s+shares\s+of|stock position in|(?:new|raised|lowered|trimmed|boosted|cut|increased|reduced|grows|shrinks|lifts)\s+(?:its\s+)?(?:stake|position|holdings)\s+in|has \$[\d.,]+\s*(?:million|billion|[mbk])\s+(?:stock\s+)?(?:position|stake|holdings)\s+in)\b/i;
+  const JUNK_SRC = new Set(['marketbeat', 'defense world', 'the ai journal', 'etf daily news', 'zolmax', 'tickerreport', 'the lincolnian online', 'the cerbat gem', 'the markets daily', 'modern readers', 'stocks register']);
+  // one story told by many outlets: the same entities, and most of the same words
+  const WORD_STOP = new Set('the and for with from that this into over after amid says said will could would its their about more than report reports reportedly talks deal deals news'.split(' '));
+  const wordsOf = t => new Set(t.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').split(' ').filter(w => w.length >= 4 && !WORD_STOP.has(w)));
+  const sameStory = (a, b) => {
+    const ea = (a.e || []).slice().sort().join(','), eb = (b.e || []).slice().sort().join(',');
+    if (!ea || ea !== eb) return false;
+    if ((a.e || []).length >= 2) return true;
+    const wa = wordsOf(a.t), wb = wordsOf(b.t); let n = 0; for (const w of wa) if (wb.has(w)) n++;
+    return n / Math.max(1, wa.size + wb.size - n) >= 0.35;
+  };
   const days = Object.keys(news.days || {}).sort().reverse().slice(0, 7);
   const byDay = new Map(days.map(d => [d, {d, moves:(news.days[d].moves || []).map(r => ({s:r.s, n:r.n, cc:r.cc, a:r.a && ids.has(r.a) ? r.a : 0, m:r.m, d1:r.d1, w1:r.w1, m1:r.m1, dv:r.dv})), items:[]}]));
   const perMover = new Map(); let kept = 0, dealsIn = 0, dealsKept = 0;
   for (const x of news.items || []) {
     const day = byDay.get(x.d), u = safe(x.u);
-    if (!day || !u || !x.t) continue;
+    if (!day || !u || !x.t || JUNK.test(x.t) || JUNK_SRC.has(String(x.src || '').toLowerCase())) continue;
     const it = {k:x.k, t:String(x.t).slice(0, 300), u, src:String(x.src || '').slice(0, 80), at:x.at || null};
     if (x.k === 'move') {
       const key = x.d + '|' + x.s, c = perMover.get(key) || 0;
@@ -279,7 +295,9 @@ if (news && news.v === 1) {
       dealsIn++;
       const e = find(it.t);
       if (!e.length) continue;
-      it.e = e.slice(0, 4); dealsKept++;
+      it.e = e.slice(0, 4);
+      if (day.items.some(o => o.k === 'deal' && sameStory(o, it))) continue;      // newest first: keep the first telling
+      dealsKept++;
     } else if (x.k === 'market') {
       const e = find(it.t); if (e.length) it.e = e.slice(0, 4);
     } else continue;

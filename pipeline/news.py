@@ -34,7 +34,7 @@ KEEP_DAYS = 7
 MOVERS = 8               # biggest gains and biggest falls in dollars, each
 PER_MOVER = 3            # headlines kept per company
 MAX_DEALS = 120          # deal headlines collected per day, before matching
-MAX_MARKET = 10
+MAX_MARKET = 12
 NOW = dt.datetime.now(dt.timezone.utc)
 UA = 'Mozilla/5.0 (compatible; OwnershipAtlas/1.0; +https://github.com/ninjapotato069/ownership-atlas)'
 LOG = []
@@ -48,7 +48,15 @@ DEAL_QUERIES = [
     '"stake in" OR "stake sale" OR "buys stake" OR "sells stake"',
     'buyout OR "take private" OR "tender offer" OR "bid for"',
 ]
-MARKET_QUERIES = ['stock market', 'Sensex OR Nifty']
+MARKET_QUERIES = ['"Wall Street" stocks', 'Sensex Nifty', '"European shares" OR "Asian shares"']
+# Not news: filings, trading notices, holdings reports of funds ("XYZ LLC Acquires 1,234 Shares of ..."), indicators.
+JUNK = re.compile(r'\b(?:form\s?(?:4|3|5|6-k|8-k|10-[kq]|13[dfg]|144|s-1|f-1)|sec (?:form|filing)|indicator by|strategy by|'
+                  r'options? research recommendation|insider (?:buying|selling)|shares? (?:sold|bought|acquired) by|'
+                  r'\d[\d,.]*\s+shares\s+of|stock position in|'
+                  r'(?:new|raised|lowered|trimmed|boosted|cut|increased|reduced|grows|shrinks|lifts)\s+(?:its\s+)?(?:stake|position|holdings)\s+in|'
+                  r'has \$[\d.,]+\s*(?:million|billion|[mbk])\s+(?:stock\s+)?(?:position|stake|holdings)\s+in)\b', re.I)
+JUNK_SOURCES = {'marketbeat', 'defense world', 'the ai journal', 'etf daily news', 'zolmax', 'tickerreport',
+                'the lincolnian online', 'the cerbat gem', 'the markets daily', 'modern readers', 'stocks register'}
 DEAL_WORDS = re.compile(r'\b(acqui\w*|takeover|take over|merger|merge[sd]?|buyout|buy-?out|stake|to buy|buys|buying|'
                         r'bid for|bids for|offer for|deal for|deal to|tender offer|take[- ]private|spin[- ]?off|'
                         r'divest\w*|sells? (?:its |a )?(?:unit|division|business|stake)|carve[- ]?out|ipo of)\b', re.I)
@@ -97,7 +105,7 @@ def parse_rss(body):
             title = title[:-(len(src) + 3)].rstrip()
         elif not src and ' - ' in title:
             title, src = title.rsplit(' - ', 1)
-        if not title or not re.match(r'^https?://', link):
+        if not title or not re.match(r'^https?://', link) or JUNK.search(title) or src.lower() in JUNK_SOURCES:
             continue
         out.append({'t': re.sub(r'\s+', ' ', title)[:300], 'u': link[:1000], 'src': src[:80],
                     'at': at.strftime('%Y-%m-%dT%H:%M:%SZ') if at else None})
