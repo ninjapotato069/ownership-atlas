@@ -3035,7 +3035,8 @@ function dlMarkets() {
 // App: the daily download (done by the app, outside the page) and app updates.
 function mkReadInfo() { try { const i = APP ? JSON.parse(APP.liveInfo()) : null; return i && typeof i === 'object' ? i : null; } catch (e) { return null; } }
 const mkTime = ms => ms ? new Date(ms).toLocaleString('en-GB', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '';
-const dataDay = () => { const d = new Date(D.builtAt || D.asOf); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric', timeZone:'UTC'}); };
+// the day of the market list (the part refreshed daily); a rebuild without it keeps the older date
+const dataDay = () => { const d = new Date((D.markets && D.markets.asOf) || D.builtAt || D.asOf); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric', timeZone:'UTC'}); };
 function appUpdate(info) {
   return info && info.latestCode > info.appCode && /^https:\/\/(github\.com\/[\w.-]+\/[\w.-]+\/releases\/|ninjapotato069\.github\.io\/ownership-atlas\/)/.test(info.apk || '') ? info : null;
 }
