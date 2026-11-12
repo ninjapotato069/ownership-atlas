@@ -216,6 +216,83 @@ if (markets) {
   console.log('market list:', markets.count, 'companies as of', markets.asOf + (cleared ? ` (${cleared} without an entity)` : ''));
 }
 
+// ---------- News (pipeline/news.py): the day's biggest moves with headlines, deal headlines that name an entity
+// in the atlas, and market headlines, for the last 7 days ----------
+let news = null;
+try { news = JSON.parse(fs.readFileSync(path.join(LIVE, 'news.json'), 'utf8')); } catch (e) { news = null; }
+if (news && news.v === 1) {
+  // names to look for in headlines: the entity's name and the parts of a bracketed name, as whole words
+  const STOP = new Set('american general national international united first global china india japan korea bank banco grupo royal capital energy power steel motor motors holdings group the new great state public life insurance industrial industries financial technologies technology systems communications pharmaceutical health airlines southern northern eastern western oil gas petroleum electric resources mining government family foundation fund trust investment investments partners nasdaq dow nyse sensex nifty'.split(' '));
+  const mvBy = new Map(markets ? markets.rows.map(r => [r[markets.cols.indexOf('a')], r[markets.cols.indexOf('m')]]) : []);
+  const names = new Map();              // lower-case phrase -> entity ids
+  const put = (phrase, id) => { const k = phrase.toLowerCase().replace(/\s+/g, ' ').trim(); if (k.length < 3) return; (names.get(k) || names.set(k, new Set()).get(k)).add(id); };
+  for (const n of nodesRaw) {
+    const auto = ext[n[0]];
+    if (auto && auto.s && !((mvBy.get(n[0]) || 0) >= 10000)) continue;   // added companies under $10B: too many look-alike names
+    if (auto && !auto.s) continue;                                         // owners added from Wikidata
+    const nm = cleanName(n[1]);
+    const m = /^(.*?)\s*\((.+)\)\s*$/.exec(nm);
+    const parts = m ? [m[1], ...m[2].split(/\s*(?:&|\/|,)\s*/)] : nm.split(' / ');
+    for (const ph of [nm, ...parts]) {
+      const x = ph.replace(/\s+(?:Inc|Corp|Co|Ltd|Plc|AG|SA|NV|SE|Group|Holdings?)\.?$/i, '').trim();
+      if (x.length >= 3 && !STOP.has(x.toLowerCase())) put(x, n[0]);
+    }
+  }
+  const phrases = [...names.keys()].filter(k => names.get(k).size === 1).sort((a, b) => b.length - a.length);
+  const firstWord = new Map();
+  for (const k of phrases) { const w = k.split(' ')[0]; (firstWord.get(w) || firstWord.set(w, []).get(w)).push(k); }
+  // a one-word name must be written with a capital letter in the headline ("Apple", not "apple")
+  const capital = (title, k) => {
+    const lt = title.toLowerCase();
+    for (let i = lt.indexOf(k); i >= 0; i = lt.indexOf(k, i + 1)) {
+      if (!/[a-z0-9]/.test(lt[i - 1] || ' ') && !/[a-z0-9]/.test(lt[i + k.length] || ' ') && /[A-Z0-9]/.test(title[i])) return true;
+    }
+    return false;
+  };
+  // Longest names first, and a name found hides the shorter ones inside it ("Reliance Industries", not "Reliance").
+  const find = title => {
+    let t = ' ' + title.toLowerCase().replace(/[’']s\b/g, '').replace(/[^a-z0-9&.\- ]+/g, ' ').replace(/[.,-]+(?=\s)/g, '') + ' ';
+    const cands = new Set();
+    for (const w of new Set(t.split(/\s+/))) for (const k of firstWord.get(w) || []) cands.add(k);
+    const out = new Set();
+    for (const k of [...cands].sort((a, b) => b.length - a.length)) {
+      if (!t.includes(' ' + k + ' ')) continue;
+      if (!k.includes(' ') && !capital(title, k)) continue;
+      out.add([...names.get(k)][0]);
+      t = t.split(' ' + k + ' ').join(' ' + '_'.repeat(k.length) + ' ');
+    }
+    return [...out];
+  };
+  const safe = u => typeof u === 'string' && /^https?:\/\//.test(u) ? u : null;
+  const days = Object.keys(news.days || {}).sort().reverse().slice(0, 7);
+  const byDay = new Map(days.map(d => [d, {d, moves:(news.days[d].moves || []).map(r => ({s:r.s, n:r.n, cc:r.cc, a:r.a && ids.has(r.a) ? r.a : 0, m:r.m, d1:r.d1, w1:r.w1, m1:r.m1, dv:r.dv})), items:[]}]));
+  const perMover = new Map(); let kept = 0, dealsIn = 0, dealsKept = 0;
+  for (const x of news.items || []) {
+    const day = byDay.get(x.d), u = safe(x.u);
+    if (!day || !u || !x.t) continue;
+    const it = {k:x.k, t:String(x.t).slice(0, 300), u, src:String(x.src || '').slice(0, 80), at:x.at || null};
+    if (x.k === 'move') {
+      const key = x.d + '|' + x.s, c = perMover.get(key) || 0;
+      if (c >= 3 || !day.moves.some(r => r.s === x.s)) continue;
+      perMover.set(key, c + 1); it.s = x.s;
+    } else if (x.k === 'deal') {
+      dealsIn++;
+      const e = find(it.t);
+      if (!e.length) continue;
+      it.e = e.slice(0, 4); dealsKept++;
+    } else if (x.k === 'market') {
+      const e = find(it.t); if (e.length) it.e = e.slice(0, 4);
+    } else continue;
+    day.items.push(it); kept++;
+  }
+  for (const day of byDay.values()) {
+    const deals = day.items.filter(i => i.k === 'deal');
+    if (deals.length > 30) { const drop = new Set(deals.slice(30)); day.items = day.items.filter(i => !drop.has(i)); kept -= drop.size; }
+  }
+  news = {updated:news.updated, days:[...byDay.values()]};
+  console.log(`news: ${days.length} days, ${kept} headlines (${dealsKept} of ${dealsIn} deal headlines name an entity in the atlas)`);
+} else news = null;
+
 // ---------- Example connection paths (BFS over all links, undirected) ----------
 const adj = new Map();
 for (const [s, t] of links) { (adj.get(s) || adj.set(s, []).get(s)).push(t); (adj.get(t) || adj.set(t, []).get(t)).push(s); }
@@ -259,6 +336,7 @@ const DATA = {
   asOf: new Date().toISOString().slice(0, 10),
   builtAt: new Date().toISOString().replace(/\.\d+Z$/, 'Z'),
   markets,
+  news,
   ext,
   fin,
   nodes: nodesRaw,
@@ -280,6 +358,8 @@ if (!tpl.includes('/*__ENGINE__*/')) { console.error('engine placeholder missing
 const out = tpl.replace('/*__DATA__*/', () => 'const DATA = ' + json.replace(/<\/script/gi, '<\\/script') + ';').replace('/*__ENGINE__*/', () => engine);
 fs.mkdirSync(path.join(__dirname, '..', 'dist'), { recursive: true });
 fs.writeFileSync(path.join(__dirname, '..', 'dist', 'atlas.html'), out);
-fs.writeFileSync(path.join(__dirname, '..', 'dist', 'data.json'), json); // for the Node tests
+fs.writeFileSync(path.join(__dirname, '..', 'dist', 'data.json'), json); // the Android app downloads this
+// The app's page: the same code without the data, which the app serves next to it (app/make-page.js).
+fs.writeFileSync(path.join(__dirname, '..', 'dist', 'shell.html'), tpl.replace('/*__DATA__*/', () => 'const DATA = null;').replace('/*__ENGINE__*/', () => engine));
 console.log('nodes', nodesRaw.length, 'links', links.length, 'graveyard', graveyard.length, 'stories', stories.length);
 console.log('data KB', Math.round(json.length / 1024), 'html KB', Math.round(out.length / 1024));

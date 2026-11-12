@@ -3,7 +3,8 @@
 #   data.json      the same data on its own; the Android app downloads it once a day
 #   version.json   the newest app release, so the app can say when an update is out
 #   companies.csv  today's market list
-#   live/          the pipeline's state (market list, company universe, Wikidata cache, status)
+#   app/           the app's page (page.html, page.json: the app updates itself from them) and the newest APK
+#   live/          the pipeline's state (market list, company universe, Wikidata cache, news, status)
 # Weekdays after the US close it first refreshes the market list and Wikidata; a push to main only rebuilds.
 # gh-pages keeps a single commit, so the repository does not grow.
 name: Refresh the atlas
@@ -19,7 +20,7 @@ on:
         default: auto
   push:
     branches: [main]
-    paths: ['template.html', 'build/**', 'data/**', 'fin/**', 'geo/**', 'pipeline/**', 'config/**', '.github/workflows/refresh.yml']
+    paths: ['template.html', 'build/**', 'data/**', 'fin/**', 'geo/**', 'pipeline/**', 'config/**', 'app/make-page.js', 'app/releases/**', '.github/workflows/refresh.yml']
 
 permissions:
   contents: write
@@ -50,6 +51,11 @@ jobs:
         working-directory: src
         run: python3 pipeline/markets.py
 
+      - name: News (headlines for the biggest moves, deals, markets)
+        if: github.event_name != 'push'
+        working-directory: src
+        run: python3 pipeline/news.py
+
       - name: Founding years, descriptions and owners (Wikidata)
         if: github.event_name != 'push' && inputs.wikidata != 'skip'
         working-directory: src
@@ -57,7 +63,9 @@ jobs:
 
       - name: Build
         working-directory: src
-        run: node build/build.js
+        run: |
+          node build/build.js
+          node app/make-page.js
 
       - name: Publish
         env:
@@ -67,6 +75,9 @@ jobs:
           cp src/dist/atlas.html out/index.html
           cp src/dist/data.json out/data.json
           cp src/live/*.json out/live/ 2>/dev/null || true
+          mkdir -p out/app
+          cp src/dist/app/page.html src/dist/app/page.json out/app/
+          cp src/app/releases/* out/app/ 2>/dev/null || true
           python3 src/pipeline/site_extras.py out
           cd out
           git init -q -b gh-pages

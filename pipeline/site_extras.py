@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Extra files for the published site: version.json (newest app release, read by the app), companies.csv
+"""Extra files for the published site: version.json (newest app, from GitHub releases or app/latest.json), companies.csv
 (today's market list for spreadsheets), .nojekyll and a robots.txt. Usage: site_extras.py <site dir>"""
 import csv
 import json
@@ -30,6 +30,16 @@ try:
             break
 except Exception as e:
     print('version.json: could not read releases:', e)
+# An APK published with the site (app/releases/ in the repository, copied to app/ here) counts too.
+try:
+    with open(os.path.join(out, 'app', 'latest.json'), encoding='utf-8') as f:
+        lat = json.load(f)
+    if lat.get('versionCode', 0) > version.get('versionCode', 0) and os.path.isfile(os.path.join(out, 'app', lat['file'])):
+        site = 'https://%s.github.io/%s/' % tuple(repo.split('/'))
+        version = {'versionCode': lat['versionCode'], 'versionName': lat['versionName'], 'apk': site + 'app/' + lat['file'],
+                   'published': lat.get('published')}
+except (OSError, ValueError, KeyError) as e:
+    print('version.json: no APK with the site:', e)
 with open(os.path.join(out, 'version.json'), 'w') as f:
     json.dump(version, f)
 print('version.json:', version or 'no release yet')

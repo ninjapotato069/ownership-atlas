@@ -502,6 +502,36 @@ footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid 
 /* ---------- markets ---------- */
 #tab-markets{--mk-out:color-mix(in srgb,var(--accent) 28%,var(--surface))}
 .mkhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px 16px;flex-wrap:wrap;margin-bottom:14px}
+/* news */
+.nwtools{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin:0 0 6px}
+.nwtools .segl{max-width:100%}
+.nwtools .lfield{min-width:0;flex:1 1 180px;max-width:320px}
+.nwday{font-family:var(--font-display);font-stretch:108%;font-size:19px;font-weight:720;margin:22px 0 10px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.nwday small{font-family:var(--font-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:400}
+.nwmv{list-style:none;margin:8px 0 0;padding:0}
+.nwmv>li{padding:9px 0;border-bottom:1px solid var(--line)}
+.nwmv>li:last-child{border-bottom:0}
+.nwmv .top{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.nwmv .top .lnk{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.nwmv .v{font-family:var(--font-mono);font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.nwmv .v.neg{color:var(--critical)}
+.nwmv .meta{color:var(--muted);font-size:12px;margin-top:1px}
+.nwhl{list-style:none;margin:6px 0 0;padding:0 0 0 10px;border-left:2px solid var(--line)}
+.nwhl li{margin:4px 0;font-size:13.5px;line-height:1.35}
+.nwhl a,.nwlist a{color:var(--ink);text-decoration:none}
+.nwhl a:hover,.nwlist a:hover{text-decoration:underline;text-underline-offset:3px}
+.nwhl small,.nwlist small{display:block;color:var(--muted);font-size:12px;margin-top:1px}
+.nwlist{list-style:none;margin:8px 0 0;padding:0}
+.nwlist>li{padding:9px 0;border-bottom:1px solid var(--line);font-size:14.5px;line-height:1.38}
+.nwlist>li:last-child{border-bottom:0}
+.nwents{display:flex;flex-wrap:wrap;gap:5px;margin-top:5px}
+.nwents button{background:var(--surface-2);border:1px solid var(--line);border-radius:999px;padding:2px 9px;font-size:12px;color:var(--ink-2);min-height:26px}
+.nwents button:hover{border-color:var(--line-strong);color:var(--ink)}
+.nwcards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.nwcards .wide{grid-column:1/-1}
+@media (max-width:760px){.nwcards{grid-template-columns:minmax(0,1fr)}.nwtools .lfield{max-width:none}}
+.nwcards>.card{min-width:0}
+.nwhl li,.nwlist>li{overflow-wrap:anywhere}
 .mkhead .sub{color:var(--ink-2);margin:0;max-width:80ch;font-size:14px}
 .mkpill{display:inline-flex;align-items:center;gap:7px;font-family:var(--font-mono);font-size:11.5px;color:var(--ink-2);border:1px solid var(--line-strong);border-radius:999px;padding:4px 11px;white-space:nowrap;background:var(--surface)}
 .mkpill i{width:8px;height:8px;border-radius:50%;background:var(--neutral);flex:none}
@@ -778,6 +808,7 @@ footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid 
   </div>
   <nav class="tabs" role="tablist" id="tabs">
     <button role="tab" data-tab="stories" aria-selected="true">Stories</button>
+    <button role="tab" data-tab="news" aria-selected="false">News</button>
     <button role="tab" data-tab="empires" aria-selected="false">Empires</button>
     <button role="tab" data-tab="power" aria-selected="false">Power &amp; flows</button>
     <button role="tab" data-tab="paths" aria-selected="false">Connection finder</button>
@@ -792,6 +823,7 @@ footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid 
   </nav>
 
   <section class="panel" role="tabpanel" id="tab-stories"></section>
+  <section class="panel" role="tabpanel" id="tab-news" hidden></section>
   <section class="panel" role="tabpanel" id="tab-empires" hidden></section>
   <section class="panel" role="tabpanel" id="tab-power" hidden></section>
   <section class="panel" role="tabpanel" id="tab-paths" hidden></section>
@@ -1564,7 +1596,7 @@ document.addEventListener('keydown', e => {
 });
 
 // ---------- tabs ----------
-const TABS = ['stories', 'empires', 'power', 'paths', 'deals', 'fin', 'markets', 'map', 'compare', 'directory', 'fallen', 'method'];
+const TABS = ['stories', 'news', 'empires', 'power', 'paths', 'deals', 'fin', 'markets', 'map', 'compare', 'directory', 'fallen', 'method'];
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) openTab(b.dataset.tab); });
 function openTab(t, scroll) {
   state.tab = t; $$('#tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === t));
@@ -1577,6 +1609,7 @@ function openTab(t, scroll) {
 const rendered = {};
 function renderTab(t, first) {
   if (t === 'stories') { if (!rendered.stories) renderStories(); }
+  else if (t === 'news') renderNews();
   else if (t === 'paths') { if (!rendered.paths) renderPaths(); }
   else if (t === 'empires') renderEmpires();
   else if (t === 'power') renderPower();
@@ -2993,6 +3026,84 @@ function drawMkBars() {
   mkBars($('#mkCC'), agg('cc', mkCountry).slice(0, 15), 'cc', 'Market value by country');
   mkBars($('#mkSec'), agg('sec', s => s), 'sec', 'Market value by sector');
 }
+// ---------- news: the day's biggest moves in value with headlines, deal news, market news (7 days) ----------
+const NW = {day:'all', kind:'all', q:''};
+const nwDays = () => (D.news && Array.isArray(D.news.days) ? D.news.days : []).filter(d => d && d.d);
+const nwDate = (d, long) => { const t = new Date(d + 'T12:00:00Z'); return isNaN(t) ? d : t.toLocaleDateString('en-GB', long ? {weekday:'long', day:'numeric', month:'long', timeZone:'UTC'} : {weekday:'short', day:'numeric', month:'short', timeZone:'UTC'}); };
+function nwWhen(at) {
+  const t = Date.parse(at || ''); if (isNaN(t)) return '';
+  const h = (Date.now() - t) / 3600000;
+  if (h < 1) return Math.max(1, Math.round(h * 60)) + ' min ago';
+  if (h < 24) return Math.round(h) + ' h ago';
+  return new Date(t).toLocaleString('en-GB', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
+}
+const nwLink = it => `<a href="${esc(it.u)}" target="_blank" rel="noopener noreferrer">${esc(it.t)}</a><small>${esc(it.src || '')}${it.src && it.at ? ' · ' : ''}${esc(nwWhen(it.at))}</small>`;
+const nwMatch = (txt, q) => !q || String(txt || '').toLowerCase().includes(q);
+function renderNews() {
+  const el = $('#tab-news'), days = nwDays();
+  if (!days.length) {
+    el.innerHTML = `<p class="empty">News appears here after the next daily refresh: the biggest moves in market value with headlines about each company, and deal news that names a company in the atlas.</p>`;
+    return;
+  }
+  if (!el.dataset.init) {
+    el.dataset.init = 1;
+    el.innerHTML = `<div class="mkhead"><p class="sub" id="nwIntro"></p><span class="mkpill on" id="nwPill"></span></div>
+    <div class="nwtools"><div class="segl" id="nwDaySeg" aria-label="Day"></div>
+    <div class="segl" id="nwKindSeg" aria-label="Show">${[['all', 'All'], ['move', 'Moves'], ['deal', 'Deals'], ['market', 'Markets']].map(([k, l]) => `<button data-k="${k}" aria-pressed="${NW.kind === k}">${l}</button>`).join('')}</div>
+    <input class="lfield" id="nwQ" type="search" placeholder="Company or word" aria-label="Find in the news"></div>
+    <div id="nwBody"></div>`;
+    $('#nwQ').addEventListener('input', e => { NW.q = e.target.value.trim().toLowerCase(); drawNews(); });
+    el.addEventListener('click', e => {
+      const d = e.target.closest('#nwDaySeg [data-d]'); if (d) { NW.day = d.dataset.d; drawNews(); return; }
+      const k = e.target.closest('#nwKindSeg [data-k]'); if (k) { NW.kind = k.dataset.k; $$('#nwKindSeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.k === NW.kind)); drawNews(); return; }
+      const n = e.target.closest('[data-node]'); if (n) { const node = byId.get(n.dataset.node); if (node) select(node, {center:true, scroll:true}); return; }
+      const m = e.target.closest('[data-msym]'); if (m && MK.data) { openTab('markets'); mkOpen(m.dataset.msym); }
+    });
+  }
+  const latest = days[0];
+  $('#nwIntro').innerHTML = `Collected every weekday after the US market closes: the biggest moves in market value, with headlines about each company, deal news that names a company in the atlas, and market headlines. The last 7 days are kept. Headlines link to the original articles.`;
+  const up = Date.parse(D.news.updated || '');
+  $('#nwPill').innerHTML = `<i></i>Updated ${isNaN(up) ? esc(nwDate(latest.d)) : esc(new Date(up).toLocaleString('en-GB', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}))}`;
+  if (NW.day !== 'all' && !days.some(d => d.d === NW.day)) NW.day = 'all';
+  $('#nwDaySeg').innerHTML = `<button data-d="all" aria-pressed="${NW.day === 'all'}">All ${days.length} day${days.length === 1 ? '' : 's'}</button>` +
+    days.map(d => `<button data-d="${esc(d.d)}" aria-pressed="${NW.day === d.d}">${esc(nwDate(d.d))}</button>`).join('');
+  drawNews();
+}
+function drawNews() {
+  const days = nwDays(), q = NW.q, show = k => NW.kind === 'all' || NW.kind === k;
+  $$('#nwDaySeg button').forEach(b => b.setAttribute('aria-pressed', b.dataset.d === NW.day));
+  const pick = NW.day === 'all' ? days : days.filter(d => d.d === NW.day);
+  const ents = it => (it.e || []).filter(id => byId.has(id));
+  const entTxt = it => ents(it).map(id => byId.get(id).name).join(' ');
+  let any = false;
+  const html = pick.map(day => {
+    const items = Array.isArray(day.items) ? day.items : [], moves = Array.isArray(day.moves) ? day.moves : [];
+    const hl = s => items.filter(i => i.k === 'move' && i.s === s);
+    const mv = moves.filter(r => nwMatch(r.n, q) || hl(r.s).some(i => nwMatch(i.t, q)));
+    const moveList = (list, title) => {
+      if (!list.length) return '';
+      return `<div class="card"><h3>${title}</h3><ul class="nwmv">${list.map(r => {
+        const dvB = (r.dv || 0) / 1000, h = hl(r.s).slice(0, 2);
+        const name = r.a && byId.has(r.a) ? `<button class="lnk" data-node="${esc(r.a)}">${esc(r.n)}</button>` : MK.data ? `<button class="lnk" data-msym="${esc(r.s)}">${esc(r.n)}</button>` : `<b>${esc(r.n)}</b>`;
+        return `<li><div class="top">${name}<span class="v ${chgCls(dvB)}">${dvB < 0 ? '−' : '+'}${fmtB(Math.abs(dvB))} · ${fmtChg(r.d1)}</span></div>
+        <div class="meta">${esc(mkCountry(r.cc))} · worth ${fmtV((r.m || 0) / 1000)}${r.m1 != null ? ` · ${fmtChg(r.m1)} over a month` : ''}</div>
+        ${h.length ? `<ul class="nwhl">${h.map(i => `<li>${nwLink(i)}</li>`).join('')}</ul>` : ''}</li>`;
+      }).join('')}</ul></div>`;
+    };
+    const gains = mv.filter(r => r.dv > 0), falls = mv.filter(r => r.dv < 0);
+    const deals = items.filter(i => i.k === 'deal' && (nwMatch(i.t, q) || nwMatch(entTxt(i), q)));
+    const market = items.filter(i => i.k === 'market' && (nwMatch(i.t, q) || nwMatch(entTxt(i), q)));
+    const list = (arr, title, sub) => arr.length ? `<div class="card wide"><h3>${title}</h3>${sub ? `<p class="sub">${sub}</p>` : ''}<ul class="nwlist">${arr.map(i => `<li>${nwLink(i)}${ents(i).length ? `<div class="nwents">${ents(i).map(id => `<button data-node="${esc(id)}">${esc(byId.get(id).name)}</button>`).join('')}</div>` : ''}</li>`).join('')}</ul></div>` : '';
+    const parts = [show('move') ? moveList(gains, 'Biggest gains in value') + moveList(falls, 'Biggest falls in value') : '',
+      show('deal') ? list(deals, 'Deals and ownership', 'Acquisitions, mergers, stakes and buyouts in the news that name a company in the atlas.') : '',
+      show('market') ? list(market, 'Markets') : ''].join('');
+    if (!parts) return '';
+    any = true;
+    return `<h2 class="nwday">${esc(nwDate(day.d, true))}<small>${day === days[0] ? 'latest market day' : 'market day'}</small></h2><div class="nwcards">${parts}</div>`;
+  }).join('');
+  $('#nwBody').innerHTML = any ? html : `<p class="empty">Nothing matches${q ? ` “${esc(NW.q)}”` : ''} in these days.</p>`;
+}
+
 function drawMkMovers() {
   const rows = MK.data.rows, top = (k, dir) => rows.filter(r => r[k] != null).sort((a, b) => (b[k] - a[k]) * dir).slice(0, 8);
   const lists = [['Biggest gains on the day', 'd1', 1], ['Biggest falls on the day', 'd1', -1], ['Best this year', 'ytd', 1], ['Worst this year', 'ytd', -1]];
@@ -3055,7 +3166,7 @@ function mkStatus() {
   const box = $('#mkLive'); box.hidden = false;
   const up = appUpdate(info);
   box.innerHTML = `<div class="row"><h3>Daily refresh</h3><button class="btn sm" data-act="mksync"${MK.busy ? ' disabled' : ''}>${MK.busy ? 'Checking…' : 'Check now'}</button></div>
-  <p>The app downloads the newest atlas when it opens and about once a day in the background: today's market values, companies that crossed $3 billion, and owners found since.${info && info.lastTry ? ` Last checked ${esc(mkTime(info.lastTry))}.` : ''}</p>
+  <p>The app downloads the newest atlas when it opens and about once a day in the background: today's market values and news, companies that crossed $3 billion, and owners found since.${info && info.pageUpdates ? ' New features and fixes arrive the same way, without reinstalling.' : ''}${info && info.lastTry ? ` Last checked ${esc(mkTime(info.lastTry))}.` : ''}</p>
   ${info && info.error ? `<p class="err">${esc(info.error)}</p>` : ''}
   ${up ? `<p><b>Version ${esc(up.latestName || '')} of the app is out.</b> <a href="${esc(up.apk)}" target="_blank" rel="noopener">Download it</a> and open the file to update; your settings stay.</p>` : ''}`;
 }
@@ -3067,7 +3178,8 @@ window.atlasLive = function (info) {
   try { MK.info = typeof info === 'string' ? JSON.parse(info) : info; } catch (e) { MK.info = mkReadInfo(); }
   const i = MK.info || {};
   // Offer a reload only for a download made since the page started (a file the page could not use stays ignored).
-  if (i.hasData && typeof i.dataBuiltAt === 'string' && i.dataBuiltAt > (D.builtAt || '') && i.dataBuiltAt !== MK.bootBuilt) toast(`<span>Newer data downloaded.</span><button class="btn sm" data-act="reload">Reload</button>`, 12000);
+  const newData = i.hasData && typeof i.dataBuiltAt === 'string' && i.dataBuiltAt > (D.builtAt || '') && i.dataBuiltAt !== MK.bootBuilt;
+  if (i.pageUpdated || newData) toast(`<span>${i.pageUpdated ? 'The app downloaded an update.' : 'Newer data downloaded.'}</span><button class="btn sm" data-act="reload">Reload</button>`, 12000);
   else if (i.manual && i.error) toast(esc(i.error));
   else if (i.manual) toast('The atlas is up to date.');
   if (state.tab === 'markets') mkStatus();
@@ -3442,11 +3554,25 @@ init();
 (function boot() {
   const app = window.AtlasApp && typeof window.AtlasApp.liveInfo === 'function' ? window.AtlasApp : null;
   let info = null; try { info = app ? JSON.parse(app.liveInfo()) : null; } catch (e) { info = null; }
-  if (!info || !info.hasData) { startAtlas(DATA); return; }
+  // The app (1.8 and later) checks that a page it downloaded starts; one that fails is set aside.
+  const failed = e => { try { if (app && typeof app.pageFailed === 'function') app.pageFailed(String((e && e.message) || e).slice(0, 300)); } catch (x) { /* ignore */ } };
+  const go = d => {
+    try { startAtlas(d); } catch (e) { failed(e); throw e; }
+    try { if (app && typeof app.pageReady === 'function') app.pageReady(String(d.builtAt || '')); } catch (e) { /* older app */ }
+  };
+  if (DATA === null) {   // the app's page: its data sits next to it (the newer of the built-in and the downloaded copy)
+    fetch('data.json', {cache:'no-store'}).then(r => r.ok ? r.json() : Promise.reject(new Error('data.json ' + r.status))).then(d => {
+      if (!d || !Array.isArray(d.nodes)) throw new Error('data.json is not an atlas');
+      d.fromApp = !!(info && info.hasData && info.dataBuiltAt === d.builtAt);
+      go(d);
+    }).catch(e => { failed(e); document.body.insertAdjacentHTML('afterbegin', '<p style="padding:24px;font:15px system-ui">The atlas could not load its data. Close and reopen the app.</p>'); });
+    return;
+  }
+  if (!info || !info.hasData) { go(DATA); return; }
   fetch('live/data.json', {cache:'no-store'}).then(r => r.ok ? r.json() : null).catch(() => null).then(d => {
     const ok = !!d && d.schema === DATA.schema && typeof d.builtAt === 'string' && d.builtAt > DATA.builtAt && Array.isArray(d.nodes) && d.nodes.length > 1000;
     if (ok) d.fromApp = true;
-    startAtlas(ok ? d : DATA);
+    go(ok ? d : DATA);
   });
 })();
 </script>

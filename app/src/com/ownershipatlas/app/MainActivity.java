@@ -21,6 +21,8 @@ import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.ParcelFileDescriptor;
 import android.provider.OpenableColumns;
 import android.util.Base64;
@@ -49,6 +51,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -66,9 +69,14 @@ import java.util.concurrent.atomic.AtomicBoolean;
  *
  * The one network job: the atlas rebuilds itself every weekday on GitHub (public repository
  * ninjapotato069/ownership-atlas, published with GitHub Pages). The app downloads the new data.json when it
- * opens and about once a day in the background, keeps it in its private storage and serves it to the page as
- * live/data.json; the page uses it when it is newer than the copy built into the app. The app also reads
- * version.json to say when a newer app is out. The page itself never talks to the network.
+ * opens and about once a day in the background, keeps it in its private storage and serves the page whichever
+ * is newer, it or the copy built into the app, as data.json. The page itself never talks to the network.
+ *
+ * Updates without a reinstall: the page's code is published too (app/page.html, described by app/page.json
+ * with its SHA-256 and the oldest app that can run it). A new page is downloaded, checked and served in place of
+ * the built-in one. The page reports that it started (AtlasApp.pageReady); one that fails to start, or reports
+ * an error, is set aside and the built-in page comes back. version.json still says when a new app is out, for
+ * the rare change that needs one.
  */
 public class MainActivity extends Activity {
     private static final String HOST = "appassets.androidplatform.net";
@@ -89,8 +97,17 @@ public class MainActivity extends Activity {
     private static final long HOUR = 3600000L;
     private static final Object SYNC_LOCK = new Object();
     private static final AtomicBoolean SYNCING = new AtomicBoolean(false);
+    private static final int PAGE_MAX = 8 * 1024 * 1024;
+    private static final int PAGE_TRIES = 3;          // starts without reporting back before a page is set aside
+    private static final long PAGE_WAIT = 30000L;     // how long a downloaded page has to report that it started
+    private static final Charset UTF8 = Charset.forName("UTF-8");
+    /** SHA-256 of the downloaded page now on screen ("" while the built-in page is). */
+    private static volatile String servedSha = "";
+    private static String builtInData;
 
     private WebView web;
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private volatile boolean pageOk;
     private boolean dark;
     private int barColor;
     private boolean lightBg;
@@ -180,6 +197,10 @@ public class MainActivity extends Activity {
         return new File(new File(c.getFilesDir(), "live"), "data.json");
     }
 
+    static File pageFile(Context c) {
+        return new File(new File(c.getFilesDir(), "live"), "page.html");
+    }
+
     static int appCode(Context c) {
         try {
             return c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionCode;
@@ -204,6 +225,12 @@ public class MainActivity extends Activity {
             o.put("apk", p.getString("apk", ""));
             o.put("site", SITE);
             o.put("manual", manual);
+            String sha = p.getString("pageSha", "");
+            o.put("pageUpdates", true);
+            o.put("pageLive", servedSha.length() > 0);
+            // a newer page was installed while this one is on screen: the page offers a reload
+            o.put("pageUpdated", sha.length() > 0 && !sha.equals(servedSha) && !sha.equals(p.getString("pageBad", ""))
+                    && pageFile(c).isFile());
         } catch (JSONException ignored) {
             // Only plain values are put.
         }
@@ -271,6 +298,8 @@ public class MainActivity extends Activity {
                     if (con != null) con.disconnect();
                 }
             }
+            // New page code (features and fixes), once the data is known to be in order.
+            if (error.length() == 0) updatePage(c, p);
             // Newest app release (small file; failures here are not reported).
             for (String base : new String[]{SITE, RAW}) {
                 HttpURLConnection con = null;
@@ -294,6 +323,84 @@ public class MainActivity extends Activity {
             return info(c, manual);
         }
     }
+
+    /**
+     * Downloads the page named by app/page.json when it is new, this app can run it, and it did not fail before.
+     * It replaces the previous download only after its SHA-256 matches.
+     */
+    private static void updatePage(Context c, SharedPreferences p) {
+        for (String base : new String[]{SITE, RAW}) {
+            HttpURLConnection con = null;
+            try {
+                con = open(base + "app/page.json", null);
+                if (con.getResponseCode() != HttpURLConnection.HTTP_OK) continue;
+                JSONObject m = new JSONObject(new String(readAll(con.getInputStream(), 65536), UTF8));
+                con.disconnect();
+                con = null;
+                String sha = m.optString("sha256", "");
+                if (!sha.matches("[0-9a-f]{64}") || m.optInt("schema") != SCHEMA || m.optInt("minCode", Integer.MAX_VALUE) > appCode(c)) return;
+                if (sha.equals(p.getString("pageBad", ""))) return;
+                if (sha.equals(p.getString("pageSha", "")) && pageFile(c).isFile()) return;
+                con = open(base + "app/page.html", null);
+                if (con.getResponseCode() != HttpURLConnection.HTTP_OK) continue;
+                byte[] body = readAll(con.getInputStream(), PAGE_MAX);
+                if (!sha.equals(sha256(body))) continue;           // cut short or changed meanwhile: the other address
+                String text = new String(body, UTF8);
+                if (!text.contains("const DATA = null;") || !text.contains("</html>")) return;
+                File f = pageFile(c), dir = f.getParentFile();
+                if (dir == null || (!dir.isDirectory() && !dir.mkdirs())) return;
+                File tmp = new File(dir, "page.html.part");
+                FileOutputStream out = new FileOutputStream(tmp);
+                try {
+                    out.write(body);
+                } finally {
+                    out.close();
+                }
+                if (!tmp.renameTo(f)) return;
+                p.edit().putString("pageSha", sha).putInt("pageTries", 0).putLong("pageAt", System.currentTimeMillis()).apply();
+                return;
+            } catch (Exception ignored) {
+                // Try the other address, then again next time.
+            } finally {
+                if (con != null) con.disconnect();
+            }
+        }
+    }
+
+    private static String sha256(byte[] b) throws Exception {
+        byte[] d = MessageDigest.getInstance("SHA-256").digest(b);
+        StringBuilder sb = new StringBuilder(64);
+        for (byte x : d) sb.append(String.format(Locale.ROOT, "%02x", x & 0xff));
+        return sb.toString();
+    }
+
+    /** The downloaded page, unless there is none or it failed to start; otherwise the page built into the app. */
+    private static boolean useDownloadedPage(Context c) {
+        SharedPreferences p = prefs(c);
+        String sha = p.getString("pageSha", "");
+        if (sha.length() == 0 || !pageFile(c).isFile() || sha.equals(p.getString("pageBad", ""))) return false;
+        if (p.getInt("pageTries", 0) >= PAGE_TRIES) {
+            p.edit().putString("pageBad", sha).apply();
+            return false;
+        }
+        return true;
+    }
+
+    /** Back to the built-in page after a downloaded one failed to start; that page is not used again. */
+    private void fallBack() {
+        String sha = servedSha;
+        if (sha.length() == 0) return;
+        prefs(this).edit().putString("pageBad", sha).apply();
+        servedSha = "";
+        if (web != null && !isFinishing()) web.loadUrl(START + "?app=android&theme=" + (dark ? "dark" : "light"));
+    }
+
+    private final Runnable watchdog = new Runnable() {
+        @Override
+        public void run() {
+            if (!pageOk) fallBack();
+        }
+    };
 
     private static byte[] readAll(InputStream in, int max) throws IOException {
         try {
@@ -452,6 +559,26 @@ public class MainActivity extends Activity {
             startSync(true);
         }
 
+        /** The page started (called once the atlas is on screen). */
+        @JavascriptInterface
+        public void pageReady(String built) {
+            pageOk = true;
+            main.removeCallbacks(watchdog);
+            if (servedSha.length() > 0) prefs(MainActivity.this).edit().putInt("pageTries", 0).apply();
+        }
+
+        /** The page could not start: a downloaded page is set aside and the built-in one comes back. */
+        @JavascriptInterface
+        public void pageFailed(String why) {
+            main.post(new Runnable() {
+                @Override
+                public void run() {
+                    main.removeCallbacks(watchdog);
+                    fallBack();
+                }
+            });
+        }
+
         @JavascriptInterface
         public void saveFile(String name, String mime, String base64) {
             if (name == null || base64 == null) return;
@@ -590,16 +717,16 @@ public class MainActivity extends Activity {
         if (path == null || path.length() <= 1) path = "/index.html";
         String name = path.substring(1);
         if (name.contains("..")) return empty(404, "Not Found");
-        if ("live/data.json".equals(name)) {
+        if ("index.html".equals(name)) return page();
+        if ("data.json".equals(name)) {
+            // the newer of the downloaded copy and the one built into the app
             File f = liveFile(this);
-            if (!f.isFile()) return empty(404, "Not Found");
-            try {
-                Map<String, String> headers = new HashMap<String, String>();
-                headers.put("Cache-Control", "no-store");
-                return new WebResourceResponse("application/json", "utf-8", 200, "OK", headers, new FileInputStream(f));
-            } catch (IOException e) {
-                return empty(404, "Not Found");
-            }
+            String live = f.isFile() ? prefs(this).getString("builtAt", "") : "";
+            if (live.length() > 0 && live.compareTo(builtInData()) > 0) return file(f, "application/json");
+            name = "data.json";
+        } else if ("live/data.json".equals(name)) {
+            File f = liveFile(this);
+            return f.isFile() ? file(f, "application/json") : empty(404, "Not Found");
         }
         try {
             InputStream in = getAssets().open(name);
@@ -612,6 +739,55 @@ public class MainActivity extends Activity {
         } catch (IOException e) {
             return empty(404, "Not Found");
         }
+    }
+
+    /** The page: the downloaded one when it is in order, otherwise the one built into the app. */
+    private WebResourceResponse page() {
+        boolean live = useDownloadedPage(this);
+        SharedPreferences p = prefs(this);
+        InputStream in;
+        try {
+            in = live ? new FileInputStream(pageFile(this)) : getAssets().open("index.html");
+        } catch (IOException e) {
+            live = false;
+            try {
+                in = getAssets().open("index.html");
+            } catch (IOException e2) {
+                return empty(404, "Not Found");
+            }
+        }
+        servedSha = live ? p.getString("pageSha", "") : "";
+        pageOk = false;
+        main.removeCallbacks(watchdog);
+        if (live) {
+            p.edit().putInt("pageTries", p.getInt("pageTries", 0) + 1).apply();
+            main.postDelayed(watchdog, PAGE_WAIT);
+        }
+        Map<String, String> headers = new HashMap<String, String>();
+        headers.put("Cache-Control", "no-store");
+        return new WebResourceResponse("text/html", "utf-8", 200, "OK", headers, in);
+    }
+
+    private static WebResourceResponse file(File f, String type) {
+        try {
+            Map<String, String> headers = new HashMap<String, String>();
+            headers.put("Cache-Control", "no-store");
+            return new WebResourceResponse(type, "utf-8", 200, "OK", headers, new FileInputStream(f));
+        } catch (IOException e) {
+            return empty(404, "Not Found");
+        }
+    }
+
+    /** Build time of the data built into the app (assets/data-built.txt). */
+    private String builtInData() {
+        if (builtInData == null) {
+            try {
+                builtInData = new String(readAll(getAssets().open("data-built.txt"), 256), UTF8).trim();
+            } catch (IOException e) {
+                builtInData = "";
+            }
+        }
+        return builtInData;
     }
 
     private static WebResourceResponse empty(int code, String reason) {

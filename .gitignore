@@ -12,3 +12,4 @@ live/*.json
 !live/README.md
 .DS_Store
 __pycache__/
+!app/releases/*.apk
