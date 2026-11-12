@@ -136,12 +136,18 @@ unit units holding holdings group grp temp com a b c h n'''.split())
 PARENT_WORDS = {'holding', 'holdings', 'group', 'grp'}
 
 
+# Share-class tails: "Liberty Media Corporation - Series A Liberty Formula One", "Berkshire Hathaway Inc. New".
+SERIES_TAIL = re.compile(r'\s+-\s+series\s+[a-z0-9]+\b.*$', re.I)
+
+
 def norm(name, strict=False):
-    s = unicodedata.normalize('NFKD', name or '').encode('ascii', 'ignore').decode().lower()
+    s = unicodedata.normalize('NFKD', SERIES_TAIL.sub('', name or '')).encode('ascii', 'ignore').decode().lower()
     s = s.replace('&', ' and ').replace('.com', ' com ').replace('.', '')
     s = re.sub(r"[^a-z0-9]+", ' ', s)
     drop = DROP_WORDS - PARENT_WORDS if strict else DROP_WORDS
     words = [w for w in s.split() if w not in drop and w != 'and']
+    if len(words) > 1 and words[-1] == 'new':
+        words.pop()
     return ' '.join(words)
 
 
@@ -244,7 +250,7 @@ def crosscheck(rows):
 
 # Lines that are not ordinary shares: preference shares, depositary shares, certificates, notes.
 NOT_COMMON = re.compile(r'\b(pref|prefs|pfd|preferred|preference|depositary|dep shs|non[- ]?cum|cum|cumulative|perp|'
-                        r'perpetual|notes?|debentures?|bonds?|series|partizipsch\w*|genussch\w*|participation|cdrs?|'
+                        r'perpetual|notes?|debentures?|bonds?|partizipsch\w*|genussch\w*|participation|cdrs?|'
                         r'rights?|warrants?|units?|subordinated)\b|%', re.I)
 RESCUED = []
 
@@ -262,7 +268,7 @@ def read_market(market, extra, size=300):
         time.sleep(0.25)
 
 
-def tradingview():
+def tradingview(amap=None):
     """Two passes per market: listings the screener marks as primary, then the home country's listings it
     marks as secondary (it gets a few big ones wrong, such as Roche and Intesa Sanpaolo). Secondary
     listings of foreign companies, which run to thousands in Germany alone, are never read."""
@@ -361,16 +367,19 @@ def tradingview():
         })
     if unknown:
         log('countries without a code:', ', '.join(sorted(unknown)))
-    return dedupe(rows)
+    return dedupe(rows, amap)
 
 
 TEMP = re.compile(r'\bTEMP\b')
 
 
-def dedupe(rows):
+def dedupe(rows, amap=None):
     """One row per company: drop extra share classes and second listings of the same name and country.
-    Shares beat depositary receipts, primary listings beat secondary ones, then the larger value wins."""
-    rows.sort(key=lambda r: (r.get('dr', False), not r.get('pri', True), bool(TEMP.search(r['n'])), -r['m']))
+    Shares beat depositary receipts and preference lines, primary listings beat secondary ones, a line the
+    hand-built atlas uses beats another class of the same company, then the larger value wins."""
+    amap = amap or {}
+    rows.sort(key=lambda r: (r.get('dr', False), bool(NOT_COMMON.search(r['n'])), not r.get('pri', True),
+                             bool(TEMP.search(r['n'])), r['s'] not in amap, -r['m']))
     seen, out, dropped, near = {}, [], [], {}
     for r in rows:
         name = norm(r['n'], strict=True)
@@ -408,7 +417,7 @@ TAIL = re.compile(r'(?:[\s,.-]+(?:class [a-z]|cl [a-z]|series [a-z0-9]+|reg s|-h
 
 
 def clean_name(n):
-    n = re.sub(r'\s+', ' ', (n or '').strip())
+    n = SERIES_TAIL.sub('', re.sub(r'\s+', ' ', (n or '').strip()))
     n = re.sub(r'^PT\s+', '', n)
     n = re.sub(r'\s*\(The\)\s*$', '', n, flags=re.I)
     prev = None
@@ -490,10 +499,18 @@ def update_universe(rows, amap):
             alt[s] = r
     today = TODAY.isoformat()
     added, dropped = [], []
-    # members that moved to another line of the same company keep their id
+    merged = []
     for sym in list(mem):
-        if sym not in by and sym in alt and alt[sym]['s'] not in mem:
-            mem[alt[sym]['s']] = mem.pop(sym)
+        if sym in by or sym not in alt:
+            continue
+        keep = alt[sym]['s']
+        if keep not in mem and keep not in amap:
+            mem[keep] = mem.pop(sym)         # the company's main line changed: it keeps its id
+        else:
+            mem.pop(sym)                     # another class or listing of a company already in the atlas
+            merged.append(sym)
+    if merged:
+        log('universe: %d extra share lines removed, e.g. %s' % (len(merged), ', '.join(merged[:8])))
     for sym, m in list(mem.items()):
         r = by.get(sym)
         if sym in amap:                      # now part of the hand-built atlas
@@ -587,7 +604,7 @@ def main():
     except (OSError, ValueError):
         amap = {}
     try:
-        rows = tradingview()
+        rows = tradingview(amap)
     except Exception as e:
         log('TradingView failed: %r. Keeping the previous files.' % (e,))
         st = load('status.json', {})
