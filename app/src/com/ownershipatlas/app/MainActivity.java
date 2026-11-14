@@ -13,6 +13,8 @@ import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.database.Cursor;
 import android.database.MatrixCursor;
@@ -210,6 +212,82 @@ public class MainActivity extends Activity {
         }
     }
 
+    static String appName(Context c) {
+        try {
+            String n = c.getPackageManager().getPackageInfo(c.getPackageName(), 0).versionName;
+            return n == null ? "" : n;
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    static File apkFile(Context c, int code) {
+        return new File(new File(c.getFilesDir(), "update"), "OwnershipAtlas-" + code + ".apk");
+    }
+
+    /**
+     * Downloads a newer app once, so that installing it later is one tap and needs no browser. The file is kept
+     * only if it is this app, the announced version, and (where Android can read it) signed with the same key.
+     * Android checks the signature again when it installs.
+     */
+    private static void fetchApp(Context c, SharedPreferences p) {
+        try {
+            int mine = appCode(c), latest = p.getInt("latestCode", 0);
+            File dir = new File(c.getFilesDir(), "update");
+            if (latest <= mine || mine <= 0) {           // up to date: clear what an earlier update left behind
+                File[] old = dir.listFiles();
+                if (old != null) for (File f : old) f.delete();
+                if (p.getInt("apkCode", 0) != 0) p.edit().remove("apkCode").apply();
+                return;
+            }
+            File f = apkFile(c, latest);
+            if (p.getInt("apkCode", 0) == latest && f.isFile()) return;
+            String url = p.getString("apk", "");
+            if (!(url.startsWith(SITE) || url.startsWith("https://github.com/"))) return;
+            if (!dir.isDirectory() && !dir.mkdirs()) return;
+            File[] old = dir.listFiles();
+            if (old != null) for (File o : old) o.delete();
+            File tmp = new File(dir, "app.part");
+            HttpURLConnection con = null;
+            try {
+                con = open(url, null);
+                con.setRequestProperty("Accept", "*/*");
+                if (con.getResponseCode() != HttpURLConnection.HTTP_OK) return;
+                InputStream in = con.getInputStream();
+                FileOutputStream out = new FileOutputStream(tmp);
+                try {
+                    byte[] buf = new byte[65536];
+                    long total = 0;
+                    int n;
+                    while ((n = in.read(buf)) > 0) {
+                        total += n;
+                        if (total > 80L * 1024 * 1024) throw new IOException("too large");
+                        out.write(buf, 0, n);
+                    }
+                } finally {
+                    out.close();
+                    in.close();
+                }
+            } finally {
+                if (con != null) con.disconnect();
+            }
+            PackageManager pm = c.getPackageManager();
+            PackageInfo a = pm.getPackageArchiveInfo(tmp.getAbsolutePath(), PackageManager.GET_SIGNATURES);
+            boolean ok = a != null && c.getPackageName().equals(a.packageName) && a.versionCode == latest;
+            if (ok && a.signatures != null && a.signatures.length > 0) {
+                PackageInfo me = pm.getPackageInfo(c.getPackageName(), PackageManager.GET_SIGNATURES);
+                ok = me.signatures != null && java.util.Arrays.equals(me.signatures, a.signatures);
+            }
+            if (!ok || !tmp.renameTo(f)) {
+                tmp.delete();
+                return;
+            }
+            p.edit().putInt("apkCode", latest).apply();
+        } catch (Throwable ignored) {
+            // The page still offers the download link.
+        }
+    }
+
     /** Status for the page: downloaded data, last check, last error, and the newest app release. */
     static String info(Context c, boolean manual) {
         SharedPreferences p = prefs(c);
@@ -221,6 +299,12 @@ public class MainActivity extends Activity {
             o.put("lastTry", p.getLong("lastTry", 0));
             o.put("error", p.getString("error", ""));
             o.put("appCode", appCode(c));
+            o.put("appName", appName(c));
+            // a newer app that is already downloaded and checked: the page offers "Install"
+            int apkCode = p.getInt("apkCode", 0);
+            o.put("canInstall", true);
+            o.put("apkCode", apkCode);
+            o.put("apkReady", apkCode > appCode(c) && apkFile(c, apkCode).isFile());
             o.put("latestCode", p.getInt("latestCode", 0));
             o.put("latestName", p.getString("latestName", ""));
             o.put("apk", p.getString("apk", ""));
@@ -320,6 +404,7 @@ public class MainActivity extends Activity {
                     if (con != null) con.disconnect();
                 }
             }
+            fetchApp(c, p);
             p.edit().putLong("lastTry", now).putString("error", error).apply();
             return info(c, manual);
         }
@@ -586,6 +671,36 @@ public class MainActivity extends Activity {
             });
         }
 
+        /** Opens Android's installer on the downloaded app; falls back to the download link. */
+        @JavascriptInterface
+        public void installUpdate() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    if (isFinishing()) return;
+                    SharedPreferences p = prefs(MainActivity.this);
+                    int code = p.getInt("apkCode", 0);
+                    File f = apkFile(MainActivity.this, code);
+                    try {
+                        if (code <= appCode(MainActivity.this) || !f.isFile()) throw new FileNotFoundException();
+                        Uri uri = Uri.parse("content://" + Files.AUTHORITY + "/update/" + Uri.encode(f.getName()));
+                        Intent i = new Intent(Intent.ACTION_VIEW);
+                        i.setDataAndType(uri, "application/vnd.android.package-archive");
+                        i.setClipData(ClipData.newRawUri(f.getName(), uri));
+                        i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(i);
+                    } catch (Throwable e) {
+                        try {
+                            String url = p.getString("apk", "");
+                            if (url.startsWith("https://")) startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                        } catch (Throwable ignored) {
+                            // Nothing can open the link.
+                        }
+                    }
+                }
+            });
+        }
+
         @JavascriptInterface
         public void saveFile(String name, String mime, String base64) {
             if (name == null || base64 == null) return;
@@ -636,7 +751,10 @@ public class MainActivity extends Activity {
         private File file(Uri uri) throws FileNotFoundException {
             String n = uri.getLastPathSegment();
             if (n == null || n.contains("/") || n.contains("..")) throw new FileNotFoundException();
-            File f = new File(new File(getContext().getCacheDir(), "exports"), n);
+            List<String> seg = uri.getPathSegments();
+            boolean app = seg.size() == 2 && "update".equals(seg.get(0)) && n.endsWith(".apk");   // the downloaded app, for Android's installer
+            if (seg.size() != 1 && !app) throw new FileNotFoundException();
+            File f = app ? new File(new File(getContext().getFilesDir(), "update"), n) : new File(new File(getContext().getCacheDir(), "exports"), n);
             if (!f.isFile()) throw new FileNotFoundException();
             return f;
         }
@@ -653,6 +771,7 @@ public class MainActivity extends Activity {
             if (n == null) return null;
             if (n.endsWith(".png")) return "image/png";
             if (n.endsWith(".csv")) return "text/csv";
+            if (n.endsWith(".apk")) return "application/vnd.android.package-archive";
             return "application/octet-stream";
         }
 

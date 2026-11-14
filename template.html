@@ -251,12 +251,6 @@ select.ifield{padding-right:26px}
 .ticker button b{font-weight:600}
 .ticker .v{font-family:var(--font-mono);color:var(--i-accent);margin-left:4px}
 @media (max-width:760px){.ticker button:nth-child(n+3){display:none}}
-.peek{left:12px;top:12px;display:flex;align-items:center;gap:8px;max-width:calc(100% - 150px);background:var(--i-glass);border:1px solid var(--i-line-3);border-radius:999px;padding:7px 12px;font-size:13px;color:var(--i-ink);box-shadow:0 6px 18px rgba(0,0,0,.35)}
-.peek .dot{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
-.peek .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;min-width:0}
-.peek .go{font-family:var(--font-mono);font-size:11px;color:var(--i-accent);white-space:nowrap}
-.peek[hidden]{display:none}
-@media (min-width:1001px){.peek{display:none!important}}
 .caption{left:12px;top:12px;width:min(460px,calc(100% - 24px));background:var(--i-glass);border:1px solid var(--i-line-3);border-radius:12px;padding:12px 14px;font-size:14px;color:var(--i-ink)}
 .caption .cap-h{display:flex;justify-content:space-between;gap:10px;font-family:var(--font-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--i-accent)}
 .caption p{margin:6px 0 10px;line-height:1.45}
@@ -597,9 +591,6 @@ footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid 
 .cmdlist .ico .odot{margin:0}
 .cmdlist .none{padding:16px 12px;color:var(--muted);font-size:14px}
 .cmdfoot{border-top:1px solid var(--line);padding:7px 14px;font-family:var(--font-mono);font-size:11px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
-.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:90;background:var(--ink);color:var(--bg);border-radius:10px;padding:10px 14px;font-size:14px;box-shadow:0 12px 30px -10px rgba(0,0,0,.5);max-width:min(560px,calc(100vw - 32px));display:flex;gap:10px;align-items:center}
-.toast[hidden]{display:none}
-.toast input{flex:1;min-width:0;background:transparent;border:1px solid currentColor;border-radius:6px;color:inherit;padding:4px 6px;font:12px var(--font-mono)}
 
 /* ---------- control & ownership in the profile ---------- */
 .ctrlhead{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;margin:4px 0 2px}
@@ -701,6 +692,178 @@ footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid 
 .smgrid svg{display:block;width:100%;height:auto;overflow:visible}
 .dlrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .btn.sm{min-height:32px;padding:5px 11px;font-size:13px}
+/* ---------- ergonomics ----------
+   Phones get a bottom bar for the main places and a side tab for details; pickers, search suggestions and
+   notices are drawn by the page, so they look and behave the same in every browser and in the Android app. */
+:root{--bnav:0px}
+@media (max-width:760px){:root{--bnav:58px}}
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:30;background:var(--bg)}
+.panel .card,.panel .nwday,.panel .mkhead{scroll-margin-top:calc(60px + env(safe-area-inset-top,0px))}
+.seg button[aria-selected="true"]{background:var(--i-raised);color:var(--i-ink)}
+.ibtn.pri{background:var(--i-accent);border-color:var(--i-accent);color:var(--i-bg);font-weight:650}
+a.btn{text-decoration:none;display:inline-flex;align-items:center}
+
+/* bottom bar (phones) */
+.bnav{display:none}
+@media (max-width:760px){
+  .bnav{position:fixed;left:0;right:0;bottom:0;z-index:40;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));background:var(--surface);border-top:1px solid var(--line-strong);padding:0 max(4px,env(safe-area-inset-right,0px)) env(safe-area-inset-bottom,0px) max(4px,env(safe-area-inset-left,0px))}
+  .bnav button{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;height:58px;min-width:0;background:none;border:0;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.01em}
+  .bnav svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .bnav button[aria-current="true"]{color:var(--ink)}
+  .bnav button[aria-current="true"]::before{content:"";position:absolute;top:-1px;left:24%;right:24%;height:3px;border-radius:0 0 3px 3px;background:var(--accent)}
+  .page{padding-bottom:calc(40px + var(--bnav))}
+  body.kb .bnav,body.netfull .bnav{display:none}
+}
+
+/* side tab: a handle on the right edge and the drawer it opens */
+.docktab{position:fixed;right:0;top:calc(env(safe-area-inset-top,0px) + 22vh);z-index:45;display:flex;flex-direction:column;align-items:center;gap:7px;background:var(--i-raised);color:var(--i-ink);border:1px solid var(--i-line-3);border-right:0;border-radius:10px 0 0 10px;padding:12px calc(5px + env(safe-area-inset-right,0px)) 12px 6px;min-height:86px;box-shadow:-6px 6px 18px -8px var(--shadow)}
+.docktab .dt-l{writing-mode:vertical-rl;font-size:12.5px;font-weight:650;letter-spacing:.05em}
+.docktab .dt-dot{width:8px;height:8px;border-radius:50%;background:var(--i-accent);flex:none}
+.docktab .dt-dot[hidden]{display:none}
+.docktab .dt-c{display:none;font-size:15px;line-height:1}
+body.dock-open .docktab{visibility:hidden}
+body.netfull .docktab{z-index:66}
+@media (min-width:1001px){.docktab{min-height:68px;width:16px;padding:10px 0;justify-content:center;border-radius:8px 0 0 8px}.docktab .dt-l{display:none}.docktab .dt-c{display:block}.docktab .dt-dot{width:6px;height:6px}}
+.dockbtn{display:none}
+@media (min-width:761px){.dockbtn{display:inline-flex}}
+.dockbtn .dt-dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.dockbtn .dt-dot[hidden]{display:none}
+.dockscrim{position:fixed;inset:0;z-index:70;background:rgba(4,10,12,.5);opacity:0;visibility:hidden;transition:opacity .2s,visibility 0s .2s;touch-action:none}
+.dockscrim.open{opacity:1;visibility:visible;transition:opacity .2s}
+.dock{position:fixed;top:0;right:0;bottom:0;z-index:71;width:min(420px,calc(100vw - 44px));display:flex;flex-direction:column;background:var(--i-surface);color:var(--i-ink);color-scheme:var(--i-scheme);border-left:1px solid var(--i-line-2);box-shadow:-24px 0 60px -30px var(--shadow);padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) 0 0;transform:translateX(104%);visibility:hidden;transition:transform .22s ease,visibility 0s .22s;outline:none}
+.dock.open{transform:none;visibility:visible;transition:transform .22s ease}
+.dockhead{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--i-line);flex:none}
+.dockhead .seg{flex:1;min-width:0;display:flex}
+.dockhead .seg button{flex:1;min-height:40px;min-width:0}
+.dockhead .seg button[hidden]{display:none}
+.dockhead .closex{width:40px;height:40px;font-size:20px;line-height:1}
+.dockbody{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;padding:16px 16px calc(28px + env(safe-area-inset-bottom,0px));font-size:14px}
+.dockpane[hidden]{display:none}
+.dock .side{height:auto;max-height:none;overflow:visible;border:0;padding:0;background:none}
+.dock .neg{color:var(--i-critical)}
+.dock .dmeta{font-family:var(--font-mono);font-size:11.5px;color:var(--i-muted);margin:2px 0 10px;line-height:1.5}
+.dupd{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;background:var(--i-raised);border:1px solid var(--i-line-3);border-radius:10px;padding:10px 12px;margin:10px 0}
+.dupd p{margin:0;flex:1 1 170px;min-width:0;color:var(--i-ink)}
+.dupd p small{display:block;color:var(--i-ink-2);font-size:12.5px;margin-top:2px}
+.dupd a.ibtn{text-decoration:none;display:inline-flex;align-items:center}
+.dgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.dgrid .ibtn{display:flex;align-items:center;min-height:44px;text-align:left;line-height:1.25;padding:6px 11px}
+.dgrid .ibtn[aria-current="true"]{border-color:var(--i-accent);color:var(--i-accent)}
+.dthemes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.dthemes button{display:flex;align-items:center;gap:8px;min-height:44px;min-width:0;background:none;border:1px solid var(--i-line-2);border-radius:9px;color:var(--i-ink);padding:6px 8px;font-size:13.5px;text-align:left}
+.dthemes button[aria-checked="true"]{border-color:var(--i-accent);background:var(--i-raised)}
+.dthemes .tsw{width:30px;height:22px;border-radius:6px}
+.dthemes .tsw::before{left:4px;top:3px;width:10px;height:3px}
+.dthemes .tsw::after{left:4px;bottom:3px;width:4px;height:4px;box-shadow:6px 0 0 var(--s),12px 0 0 var(--g)}
+.dnews{list-style:none;margin:0;padding:0}
+.dnews li{padding:8px 0;border-bottom:1px solid var(--i-line);font-size:13.5px;line-height:1.38;overflow-wrap:anywhere}
+.dnews a{color:var(--i-ink);text-decoration:none}
+.dnews a:hover{text-decoration:underline;text-underline-offset:3px}
+.dnews small{display:block;color:var(--i-muted);font-size:12px;margin-top:1px}
+.dock details summary{cursor:pointer;color:var(--i-ink);font-weight:600;padding:8px 0}
+.dock details ul{margin:2px 0 8px;padding-left:18px;color:var(--i-ink-2);display:grid;gap:5px;font-size:13.5px}
+
+/* the selected company, on the network (narrow screens; wide screens show the profile beside it) */
+.peek{left:12px;right:60px;bottom:12px;max-width:460px;display:flex;align-items:stretch;background:var(--i-glass);border:1px solid var(--i-line-3);border-radius:14px;box-shadow:0 8px 22px rgba(0,0,0,.35);overflow:hidden}
+.peek[hidden]{display:none}
+.peek .pk-main{flex:1;min-width:0;display:flex;align-items:center;gap:10px;min-height:52px;background:none;border:0;color:var(--i-ink);padding:8px 10px 8px 12px;text-align:left}
+.peek .dot{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
+.peek .pk-t{flex:1;min-width:0}
+.peek .pk-t b{display:block;font-size:14.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.peek .pk-t small{display:block;font-size:11.5px;color:var(--i-ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.peek .go{flex:none;font-family:var(--font-mono);font-size:11.5px;color:var(--i-accent);white-space:nowrap}
+.peek .pk-x{flex:none;width:44px;background:none;border:0;border-left:1px solid var(--i-line-2);color:var(--i-ink-2);font-size:14px}
+@media (min-width:1001px){.peek{display:none!important}}
+@media (max-width:1000px){.cwrap.has-peek .ticker{display:none}}
+
+/* the network: page scrolling wins until it is zoomed, a hint, and full screen */
+#net{touch-action:pan-y}
+#net.eng{touch-action:none}
+.nethint{left:50%;top:50%;transform:translate(-50%,-50%);width:max-content;max-width:min(320px,calc(100% - 32px));background:var(--i-glass);border:1px solid var(--i-line-3);border-radius:12px;padding:10px 14px;font-size:13.5px;line-height:1.4;color:var(--i-ink);text-align:center;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.nethint[hidden]{display:none}
+.zoombar button svg{display:block;margin:auto}
+.cwrap.full{position:fixed;inset:0;z-index:65;height:auto;min-height:0}
+.cwrap.full .legend{top:calc(12px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px))}
+.cwrap.full .caption{top:calc(12px + env(safe-area-inset-top,0px));left:calc(12px + env(safe-area-inset-left,0px))}
+.cwrap.full .zoombar{right:calc(12px + env(safe-area-inset-right,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+.cwrap.full .ticker,.cwrap.full .peek{left:calc(12px + env(safe-area-inset-left,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+@media (max-width:760px){.zoombar #zpng{display:none}}
+body.netfull{overflow:hidden}
+
+/* picker: a sheet from the bottom on phones, a list under the field on wider screens */
+.pick{position:fixed;inset:0;z-index:85}
+.pick[hidden]{display:none}
+.pick.sheet{display:flex;align-items:flex-end;justify-content:center;background:rgba(4,10,12,.5);touch-action:none}
+.pickbox{display:flex;flex-direction:column;min-height:0;background:var(--surface-2);color:var(--ink);border:1px solid var(--line-strong);box-shadow:0 24px 60px -20px var(--shadow);outline:none}
+.pick.sheet .pickbox{width:100%;max-width:560px;max-height:min(78%,640px);border-radius:18px 18px 0 0;border-bottom:0;padding-bottom:env(safe-area-inset-bottom,0px)}
+.pick.pop .pickbox{position:fixed;border-radius:12px}
+.pickhead{display:flex;align-items:center;gap:10px;padding:14px 8px 8px 18px;flex:none}
+.pickhead h2{flex:1;min-width:0;margin:0;font-family:var(--font-display);font-stretch:108%;font-size:17px;font-weight:720;letter-spacing:-.005em}
+.pickhead button{width:40px;height:40px;border-radius:9px;background:none;border:0;color:var(--ink-2);font-size:15px;flex:none}
+.pick.pop .pickhead{display:none}
+.pickq{flex:none;margin:0 12px 6px;background:var(--surface);border:1px solid var(--line-strong);border-radius:9px;padding:9px 11px;min-height:42px;font-size:15px;color:var(--ink)}
+.pick.pop .pickq{margin:8px 8px 4px;min-height:36px;padding:6px 9px;font-size:14px}
+.pickq[hidden]{display:none}
+.picklist{overflow:auto;overscroll-behavior:contain;min-height:0;padding:4px 6px 10px;touch-action:pan-y}
+.picklist [role=option]{display:flex;align-items:center;gap:8px;min-height:46px;padding:4px 10px;border-radius:9px;font-size:15px;line-height:1.3;cursor:pointer}
+.pick.pop .picklist [role=option]{min-height:34px;font-size:14px}
+.picklist [role=option].act{background:var(--hover)}
+.picklist [role=option][aria-selected="true"]{font-weight:650}
+.picklist .ck{flex:none;width:18px;color:var(--accent);font-size:14px}
+.picklist .none{padding:14px 12px;color:var(--muted);font-size:14px}
+
+/* search suggestions under a field */
+.aclist{position:fixed;z-index:86;background:var(--surface-2);color:var(--ink);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 18px 44px -16px var(--shadow);overflow:auto;overscroll-behavior:contain;padding:4px}
+.aclist[hidden]{display:none}
+.aclist [role=option]{display:flex;align-items:center;gap:8px;min-height:46px;padding:5px 10px;border-radius:8px;cursor:pointer}
+.aclist [role=option].act{background:var(--accent-soft)}
+.aclist .odot{flex:none;margin:0}
+.aclist .t{flex:1;min-width:0}
+.aclist .t b{display:block;font-size:14.5px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aclist .t small{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* notices: a stack above the bottom bar */
+.ntcs{position:fixed;z-index:90;left:0;right:0;bottom:calc(var(--bnav) + 12px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;align-items:center;gap:8px;padding:0 max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px));pointer-events:none}
+body.kb .ntcs,body.netfull .ntcs{bottom:calc(12px + env(safe-area-inset-bottom,0px))}
+.ntc{pointer-events:auto;display:flex;align-items:center;gap:10px;width:min(520px,100%);background:var(--surface-2);color:var(--ink);border:1px solid var(--line-strong);border-radius:12px;padding:7px 6px 7px 12px;font-size:14px;line-height:1.4;box-shadow:0 14px 34px -14px var(--shadow);touch-action:pan-y;animation:notein .18s ease-out}
+.ntc.out{opacity:0;transform:translateY(6px);transition:opacity .16s,transform .16s}
+@keyframes notein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ntc .ntc-i{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:700 12px/1 var(--font-mono);background:var(--accent-soft);color:var(--ink)}
+.ntc.ok .ntc-i{background:var(--good);color:#fff}
+.ntc.warn .ntc-i{background:var(--warning);color:#1b1400}
+.ntc.err .ntc-i{background:var(--critical);color:#fff}
+.ntc .ntc-b{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:3px 0;overflow-wrap:anywhere}
+.ntc .ntc-b > span{flex:1 1 150px;min-width:0}
+.ntc .ntc-b input{flex:1 1 200px;min-width:0;background:var(--surface);border:1px solid var(--line-strong);border-radius:6px;color:inherit;padding:7px 8px;font:12px var(--font-mono)}
+.ntc .ntc-x{flex:none;width:36px;height:36px;border-radius:8px;background:none;border:0;color:var(--muted);font-size:13px}
+.ntc .ntc-x:hover{background:var(--hover);color:var(--ink)}
+
+/* search box: two lines per result on phones, a close button, no keyboard hints where there is no keyboard */
+.cmdx{flex:none;width:40px;height:40px;margin-right:-8px;border-radius:9px;background:none;border:0;color:var(--ink-2);font-size:15px}
+@media (hover:hover) and (pointer:fine){.cmdx{display:none}}
+@media (hover:none){.cmdfoot{display:none}}
+@media (max-width:560px){
+  .cmdlist [role=option]{display:grid;grid-template-columns:22px minmax(0,1fr);column-gap:10px;row-gap:0;min-height:46px;align-content:center}
+  .cmdlist [role=option] .t{white-space:normal}
+  .cmdlist [role=option] .meta{grid-column:2;margin:0;padding:0;white-space:normal}
+}
+
+/* fingers need bigger targets than a mouse pointer */
+@media (pointer:coarse){
+  .ifield,.ibtn,.chip,.seg button,.lfield,.segl button,.btn,.btn.sm,.fchip,.examples button,.cmdbtn,.themebtn{min-height:44px}
+  .zoombar button,.mapzoom button{width:42px;height:42px}
+  .closex{width:40px;height:40px}
+  .tabs button{padding:13px 13px 12px}
+  .nm,.lnk{padding-block:6px}
+  .legend summary{padding:5px 2px}
+  .ents button,.nwents button,.minichip{min-height:36px;padding-inline:11px}
+  .cmp-chip button{width:36px;height:36px}
+  .thememenu button{padding:10px 8px}
+  input[type=checkbox]{width:20px;height:20px;flex:none}
+  #year{height:32px}
+  .ticker button{padding:8px 12px}
+  .rankbars button{padding:10px 8px}
+}
 @media (prefers-reduced-motion: reduce){*{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
 </style>
 
@@ -708,6 +871,7 @@ footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid 
   <header class="mast">
     <div class="topline"><div class="eyebrow" id="topline">Who owns whom · 1900 → 26 Oct 2026</div>
       <div class="tl-actions"><button class="cmdbtn" id="cmdBtn" aria-haspopup="dialog" title="Search entities and commands (Ctrl+K)"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="lbl2">Search</span><kbd id="cmdKbd">Ctrl K</kbd></button>
+      <button class="cmdbtn dockbtn" id="dockBtn" aria-controls="dock" title="Status, today's moves and deals, all sections">Today<span class="dt-dot" id="dockBtnDot" hidden></span></button>
       <div class="themepick"><button class="themebtn" id="themeBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu" title="Change the colour theme"><span class="tsw" aria-hidden="true"></span><span id="themeName">Theme</span></button>
       <div class="thememenu" id="themeMenu" role="menu" aria-label="Colour theme" hidden></div></div></div></div>
     <div>
@@ -720,7 +884,7 @@ footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid 
   <section class="instrument" aria-label="Ownership network">
     <div class="toolbar" id="toolbar" role="toolbar" aria-label="Network filters">
       <div class="grp tb-search">
-        <input id="search" class="ifield" type="search" list="nodeNames" placeholder="Search any company or fund" aria-label="Find a company">
+        <input id="search" class="ifield" type="search" data-ac="node" placeholder="Search any company or fund" aria-label="Find a company">
         <button class="ibtn tb-toggle" id="tbToggle" aria-expanded="false" aria-controls="tbMore">Filters</button>
       </div>
       <div class="tb-more" id="tbMore">
@@ -788,12 +952,14 @@ footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid 
           <div class="row" style="color:var(--i-muted)" id="sizeLegend">Dots flow from owner to owned. Size = rough scale.</div>
         </details>
         <div class="ovl caption" id="caption" hidden></div>
-        <button class="ovl peek" id="peek" hidden></button>
+        <div class="ovl peek" id="peek" hidden></div>
+        <div class="ovl nethint" id="netHint" role="status" hidden></div>
         <div class="ovl ticker" id="ticker"></div>
         <div class="ovl zoombar">
           <button id="zin" aria-label="Zoom in">+</button>
           <button id="zout" aria-label="Zoom out">−</button>
           <button id="zfit" aria-label="Fit to view" title="Fit to view">⤢</button>
+          <button id="zfull" aria-label="Network full screen" aria-pressed="false" title="Full screen"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M3 7.5V3h4.5M12.5 3H17v4.5M17 12.5V17h-4.5M7.5 17H3v-4.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
           <button id="zpng" aria-label="Save this view as an image" title="Save this view as an image"><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M10 3v9M6 8.5l4 4 4-4M4 15.5h12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
         <div class="ovl tooltip" id="tip" hidden></div>
@@ -838,15 +1004,40 @@ footer{margin-top:40px;color:var(--muted);font-size:12.5px;border-top:1px solid 
 
   <footer id="foot"></footer>
 </div>
-<datalist id="nodeNames"></datalist>
 <div class="ctip" id="ctip" hidden></div>
 <div class="cmdk" id="cmdk" hidden><div class="cmdbox" role="dialog" aria-modal="true" aria-label="Search and commands">
   <div class="cmdin"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-  <input id="cmdQ" type="text" autocomplete="off" spellcheck="false" placeholder="Search 1,400+ entities, countries, stories, or type a year" aria-label="Search entities and commands" role="combobox" aria-expanded="true" aria-controls="cmdList" aria-autocomplete="list"></div>
+  <input id="cmdQ" type="text" autocomplete="off" spellcheck="false" placeholder="Search 1,400+ entities, countries, stories, or type a year" aria-label="Search entities and commands" role="combobox" aria-expanded="true" aria-controls="cmdList" aria-autocomplete="list"><button class="cmdx" id="cmdX" type="button" aria-label="Close search">✕</button></div>
   <div class="cmdlist" id="cmdList" role="listbox" aria-label="Results"></div>
   <div class="cmdfoot"><span><kbd>↑</kbd> <kbd>↓</kbd> move</span><span><kbd>Enter</kbd> open</span><span><kbd>Esc</kbd> close</span><span>Type a year such as 2008 to jump the timeline</span></div>
 </div></div>
-<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<button class="docktab" id="dockTab" aria-controls="dock" aria-expanded="false" aria-label="Open the side tab: details, today and menu"><span class="dt-dot" id="dockDot" hidden></span><span class="dt-l">Details</span><span class="dt-c" aria-hidden="true">‹</span></button>
+<div class="dockscrim" id="dockScrim"></div>
+<aside class="dock" id="dock" aria-label="Side tab" tabindex="-1">
+  <div class="dockhead">
+    <div class="seg" id="dockSeg" role="tablist" aria-label="Side tab sections"><button role="tab" data-p="details" aria-selected="false">Details</button><button role="tab" data-p="today" aria-selected="true">Today</button><button role="tab" data-p="menu" aria-selected="false">Menu</button></div>
+    <button class="closex" id="dockX" aria-label="Close the side tab">›</button>
+  </div>
+  <div class="dockbody" id="dockBody">
+    <section class="dockpane" id="dockDetails" hidden></section>
+    <section class="dockpane side" id="dockToday"></section>
+    <section class="dockpane side" id="dockMenu" hidden></section>
+  </div>
+</aside>
+<nav class="bnav" id="bnav" aria-label="Main places">
+  <button data-go="net" aria-current="true"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="7" r="2.3"/><circle cx="18" cy="8" r="2.3"/><circle cx="11" cy="17.5" r="2.3"/><path d="M8.3 7.2l7.4.6M7 9.1l3 6.3M16.7 9.9l-4.3 5.8"/></svg><span>Atlas</span></button>
+  <button data-go="news" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 9.5h8M8 13h8M8 16.2h5"/></svg><span>News</span></button>
+  <button data-go="markets" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19.5h16M7 16v-4M12 16V8M17 16v-7"/></svg><span>Markets</span></button>
+  <button data-go="search" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="5.6"/><path d="M15 15l4.6 4.6"/></svg><span>Search</span></button>
+  <button data-go="more" aria-current="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h14"/></svg><span>More</span></button>
+</nav>
+<div class="pick" id="pick" hidden><div class="pickbox" role="dialog" aria-modal="true" aria-labelledby="pickT" tabindex="-1">
+  <div class="pickhead"><h2 id="pickT"></h2><button data-act="pick-x" aria-label="Close">✕</button></div>
+  <input class="pickq" id="pickQ" type="search" placeholder="Type to narrow the list" aria-label="Narrow the list" autocomplete="off" spellcheck="false" hidden>
+  <div class="picklist" id="pickList" role="listbox" aria-labelledby="pickT"></div>
+</div></div>
+<div class="aclist" id="acList" role="listbox" aria-label="Suggestions" hidden></div>
+<div class="ntcs" id="notes" role="region" aria-label="Notices"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
 <script>
@@ -951,8 +1142,6 @@ const state = { year:YMAX, playing:false, speed:1, layout:'ind', ghosts:true, fa
   const cc = new Set(nodes.map(n => n.cc)).size;
   $('#register').innerHTML = [['Entities', nodes.length], ['Ownership links', links.length], ['Countries', cc], ['Fallen giants', D.graveyard.length]]
     .map(([k, v]) => `<div><b>${fmtN(v)}</b>${k}</div>`).join('');
-  // Suggestions: everything mapped by hand, plus added companies worth $20B or more or with owners found.
-  $('#nodeNames').innerHTML = nodes.filter(n => !n.auto || n.tier >= 2 || n.deg).sort((a, b) => a.name.localeCompare(b.name)).map(n => `<option value="${esc(n.name)}"></option>`).join('');
   $('#foot').innerHTML = `Data compiled from company filings, exchange disclosures, regulators and major news coverage, current to 22 October 2026. Stakes and values are approximate and shown at the time of each deal unless noted. A curated set, not an exhaustive register. Not investment advice.`;
 })();
 
@@ -986,7 +1175,7 @@ function toggleBtn(id, key) { $(id).addEventListener('click', () => { state[key]
 toggleBtn('#tGhost', 'ghosts'); toggleBtn('#tFailed', 'failed');
 $('#tFlow').setAttribute('aria-pressed', state.flow);
 $('#tFlow').addEventListener('click', () => { state.flow = !state.flow; $('#tFlow').setAttribute('aria-pressed', state.flow); });
-$('#search').addEventListener('change', e => { const n = byName.get(e.target.value.trim().toLowerCase()); if (n) { select(n, {center:true}); e.target.value = ''; } });
+$('#search').addEventListener('change', e => { const v = e.target.value.trim().toLowerCase(), n = (AC.last && AC.last.k === v ? AC.last.n : null) || byName.get(v); if (n) { select(n, {center:true}); e.target.value = ''; } });
 $('#search').addEventListener('keydown', e => { if (e.key === 'Enter') { const v = e.target.value.trim().toLowerCase(); const n = byName.get(v) || nodes.find(x => x.name.toLowerCase().includes(v)); if (n) { select(n, {center:true}); e.target.value = ''; } } });
 $('#resetAll').addEventListener('click', () => { stopPlay(); exitStory(); state.path = null; state.filters = {ind:'',region:'',cc:'',own:new Set(['private','state','gov'])}; state.ego = false; state.selected = null; state.layout = 'ind';
   state.sizeBy = 'tier'; $('#fSize').value = 'tier'; computeSizes(); $('#sizeLegend').textContent = SIZE_TEXT.tier; if (sim) sim.force('collide').radius(n => R(n) + 1.8);
@@ -1110,6 +1299,7 @@ function fitTo(arr, pad, dur) {
   pts.forEach(n => { const r = R(n); x0 = Math.min(x0, n.x - r); y0 = Math.min(y0, n.y - r); x1 = Math.max(x1, n.x + r); y1 = Math.max(y1, n.y + r); });
   const w = Math.max(x1 - x0, 40), h = Math.max(y1 - y0, 40); pad = pad == null ? 40 : pad;
   let k = Math.min((cw - pad * 2) / w, (ch - pad * 2) / h); k = Math.max(0.2, Math.min(k, pts.length < 6 ? 2.6 : 4));
+  fitK = k; pinched = false;   // the resting scale: from here a finger scrolls the page again
   const t = d3.zoomIdentity.translate(cw / 2 - k * (x0 + x1) / 2, ch / 2 - k * (y0 + y1) / 2).scale(k);
   const sel = d3.select(canvas); if (REDUCED || !dur) sel.call(zoom.transform, t); else sel.transition().duration(dur).call(zoom.transform, t);
 }
@@ -1289,7 +1479,7 @@ function nodeMeta(n, Y) {
   return `${COUNTRY[n.cc].name} · ${IND[n.ind]}<br>${TYPE_LABEL[typeAt(n, Y)]} · ${st}`;
 }
 function showTip(n, mx, my) {
-  if (!n) { tip.hidden = true; return; }
+  if (!n || lastPtr !== 'mouse') { tip.hidden = true; return; }
   const Y = state.year, owners = n.inn.filter(l => activeAt(l, Y) && HOLD.has(l.k)).length, holds = n.out.filter(l => activeAt(l, Y) && HOLD.has(l.k)).length;
   const f = FIN[n.id], pr = profitOf(f), fl = [];
   if (f && !f.w) { if (f.r != null) fl.push('Revenue ' + fmtB(f.r)); if (pr != null) fl.push((pr < 0 ? 'Loss ' : 'Profit ') + fmtB(Math.abs(pr))); const w = worthOf(f); if (w != null) fl.push((f.m != null ? 'Value ' : f.v != null ? 'Valued ' : 'Worth ') + fmtB(w)); if (f.aum != null) fl.push('Manages ' + fmtB(f.aum)); if (f.gdp != null) fl.push('GDP ' + fmtB(f.gdp)); if (f.c) fl.push(fmtCount(f.c[0]) + ' ' + f.c[1].split(' (')[0]); }
@@ -1303,7 +1493,7 @@ canvas.addEventListener('mousemove', e => { const r = canvas.getBoundingClientRe
 canvas.addEventListener('mouseleave', () => { state.hover = null; computeHL(); showTip(null); canvas.classList.remove('hovering'); });
 canvas.addEventListener('click', e => { const r = canvas.getBoundingClientRect(); const n = nodeAt(e.clientX - r.left, e.clientY - r.top); if (n) select(n); else if (state.selected) { state.selected = null; state.ego = false; refresh(); } });
 canvas.addEventListener('dblclick', e => { const r = canvas.getBoundingClientRect(); const n = nodeAt(e.clientX - r.left, e.clientY - r.top); if (n) centerOn(n, 2.4); });
-function centerOn(n, kk) { if (!zoom || !n || n.x == null) return; const k = kk || Math.max(tf.k, 1.6); const t = d3.zoomIdentity.translate(cw / 2 - n.x * k, ch / 2 - n.y * k).scale(k); const s = d3.select(canvas); if (REDUCED) s.call(zoom.transform, t); else s.transition().duration(650).call(zoom.transform, t); }
+function centerOn(n, kk) { if (!zoom || !n || n.x == null) return; pinched = false; const k = kk || Math.max(tf.k, 1.6); const t = d3.zoomIdentity.translate(cw / 2 - n.x * k, ch / 2 - n.y * k).scale(k); const s = d3.select(canvas); if (REDUCED) s.call(zoom.transform, t); else s.transition().duration(650).call(zoom.transform, t); }
 function select(n, opt) {
   opt = opt || {}; state.selected = n; state.hover = null;
   if (state.path && !state.path.nodes.includes(n)) state.path = null;
@@ -1311,7 +1501,8 @@ function select(n, opt) {
   else if (!state.ghosts && ghostAt(n, state.year)) setYear(n.e, {silent:true});
   refresh({keepSide:false});
   if (opt.center) setTimeout(() => centerOn(n), 60);
-  if (opt.scroll) $('.instrument').scrollIntoView({behavior:REDUCED ? 'auto' : 'smooth', block:'start'});
+  // narrow screens open the profile in the side tab, where the reader is; wide ones go to the network beside it
+  if (opt.scroll) { if (isNarrow()) openDock('details'); else $('.instrument').scrollIntoView({behavior:REDUCED ? 'auto' : 'smooth', block:'start'}); }
 }
 $('#zin').addEventListener('click', () => d3.select(canvas).transition().duration(REDUCED ? 0 : 250).call(zoom.scaleBy, 1.4));
 $('#zout').addEventListener('click', () => d3.select(canvas).transition().duration(REDUCED ? 0 : 250).call(zoom.scaleBy, 1 / 1.4));
@@ -1561,16 +1752,25 @@ function setYear(Y, opt) {
 }
 function refresh(opt) {
   opt = opt || {};
-  computeVisible(); syncSim(opt.reheat); computeHL(); renderSide(); renderTicker(); renderStats(); renderHisto(); renderPeek(); renderFilterCount();
+  computeVisible(); syncSim(opt.reheat); computeHL(); renderSide(); renderTicker(); renderStats(); renderHisto(); renderPeek(); renderFilterCount(); dockSync();
   if (opt.fit) setTimeout(() => fitTo(vis.arr.filter(n => vis.core.has(n)), 30, 600), 250);
   scheduleTab();
   writeHashSoon();
 }
-function renderPeek() { const peek = $('#peek'), n = state.selected; if (!n || state.story) { peek.hidden = true; return; } peek.hidden = false; peek.setAttribute('aria-label', 'Show details for ' + n.name); peek.innerHTML = `<span class="dot" style="--c:${iVar(classAt(n, state.year))}"></span><span class="nm">${esc(n.name)}</span><span class="go">Details ↓</span>`; }
-$('#peek').addEventListener('click', () => side.scrollIntoView({behavior:REDUCED ? 'auto' : 'smooth', block:'start'}));
+// Narrow screens: the selected company as a card at the foot of the network; it opens the side tab.
+function renderPeek() {
+  const peek = $('#peek'), n = state.selected, on = !!n && !state.story;
+  peek.hidden = !on; wrap.classList.toggle('has-peek', on); if (!on) { peek.innerHTML = ''; return; }
+  peek.innerHTML = `<button class="pk-main" data-act="peek-open" aria-label="Show details for ${esc(n.name)}"><span class="dot" style="--c:${iVar(classAt(n, state.year))}"></span><span class="pk-t"><b>${esc(n.name)}</b><small>${esc(COUNTRY[n.cc].name)} · ${esc(IND[n.ind])}</small></span><span class="go">Details ›</span></button><button class="pk-x" data-act="peek-x" aria-label="Clear the selection">✕</button>`;
+}
+$('#peek').addEventListener('click', e => { if (e.target.closest('[data-act="peek-x"]')) { state.selected = null; state.ego = false; refresh(); } else if (e.target.closest('[data-act="peek-open"]')) openDock('details'); });
 // Android back button (app wrapper): close the innermost open thing; false means nothing was open.
 window.atlasBack = function () {
+  if (PICK.sel) { closePick(); return true; }
+  if (!acList.hidden) { acClose(); return true; }
   if (!$('#cmdk').hidden) { closeCmd(); return true; }
+  if (DOCK.open) { closeDock(); return true; }
+  if (wrap.classList.contains('full')) { setFull(false); return true; }
   if (state.story) { exitStory(); return true; }
   if (state.path) { state.path = null; refresh(); return true; }
   if (state.selected) { state.selected = null; state.ego = false; refresh(); return true; }
@@ -1599,12 +1799,14 @@ document.addEventListener('keydown', e => {
 const TABS = ['stories', 'news', 'empires', 'power', 'paths', 'deals', 'fin', 'markets', 'map', 'compare', 'directory', 'fallen', 'method'];
 $('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (b) openTab(b.dataset.tab); });
 function openTab(t, scroll) {
+  closeDock(); hideC();
   state.tab = t; $$('#tabs [data-tab]').forEach(b => b.setAttribute('aria-selected', b.dataset.tab === t));
   TABS.forEach(x => { $('#tab-' + x).hidden = x !== t; });
   renderTab(t, true);
   writeHashSoon();
   const tb = $(`#tabs [data-tab="${t}"]`); if (tb && tb.scrollIntoView) { const r = tb.getBoundingClientRect(), pr = $('#tabs').getBoundingClientRect(); if (r.left < pr.left || r.right > pr.right) $('#tabs').scrollLeft += r.left - pr.left - 24; }
   if (scroll) $('#tabs').scrollIntoView({behavior:REDUCED ? 'auto' : 'smooth', block:'start'});
+  navSync();
 }
 const rendered = {};
 function renderTab(t, first) {
@@ -1659,10 +1861,10 @@ function renderPaths() {
   rendered.paths = true;
   const ex = D.examples.map(([a, b]) => `<button data-a="${a}" data-b="${b}">${esc(byId.get(a).name)} ↔ ${esc(byId.get(b).name)}</button>`).join('');
   $('#tab-paths').innerHTML = `<div class="card"><h3>How are two organisations connected?</h3><p class="sub">Finds the shortest chain of ownership, investment or merger links between any two entities, in either direction.</p>
-  <form class="pf" id="pfForm"><label>From<input class="lfield" id="pfA" list="nodeNames" placeholder="e.g. Amazon" autocomplete="off"></label>
-  <button type="button" class="btn ghost" id="pfSwap" aria-label="Swap" style="min-height:38px">⇄</button>
-  <label>To<input class="lfield" id="pfB" list="nodeNames" placeholder="e.g. Reliance Industries" autocomplete="off"></label>
-  <button class="btn" type="submit" style="min-height:38px">Find connection</button></form>
+  <form class="pf" id="pfForm"><label>From<input class="lfield" id="pfA" data-ac="node" placeholder="e.g. Amazon" autocomplete="off"></label>
+  <button type="button" class="btn ghost" id="pfSwap" aria-label="Swap">⇄</button>
+  <label>To<input class="lfield" id="pfB" data-ac="node" placeholder="e.g. Reliance Industries" autocomplete="off"></label>
+  <button class="btn" type="submit">Find connection</button></form>
   <label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:13.5px;color:var(--ink-2)"><input type="checkbox" id="pfYear"> Only use links active in the selected year (<span id="pfYearV">${state.year}</span>)</label>
   <label style="display:flex;gap:8px;align-items:center;margin-top:6px;font-size:13.5px;color:var(--ink-2)"><input type="checkbox" id="pfOrg"> Allow routes through the IMF, World Bank and other multilateral lenders (every member state is linked to them)</label>
   <div class="examples" id="pfEx"><span class="eyebrow" style="align-self:center;margin-right:4px">Try</span>${ex}</div>
@@ -1673,7 +1875,7 @@ function renderPaths() {
   $('#pfOut').addEventListener('click', e => { const b = e.target.closest('[data-node]'); if (b) select(byId.get(b.dataset.node), {center:true, scroll:true});
     const s = e.target.closest('[data-showpath]'); if (s && state.lastPath) { state.path = state.lastPath; state.selected = null; exitStory(); refresh(); $('.instrument').scrollIntoView({behavior:REDUCED ? 'auto' : 'smooth', block:'start'}); setTimeout(() => fitTo(state.path.nodes.filter(n => n.x != null), 80, 700), 300); } });
 }
-function findNode(v) { v = (v || '').trim().toLowerCase(); if (!v) return null; return byName.get(v) || nodes.find(n => n.name.toLowerCase().startsWith(v)) || nodes.find(n => n.name.toLowerCase().includes(v)); }
+function findNode(v) { v = (v || '').trim().toLowerCase(); if (!v) return null; if (AC.last && AC.last.k === v) return AC.last.n; return byName.get(v) || nodes.find(n => n.name.toLowerCase().startsWith(v)) || nodes.find(n => n.name.toLowerCase().includes(v)); }
 function runPath() {
   const A = findNode($('#pfA').value), B = findNode($('#pfB').value), out = $('#pfOut'), Y = state.year, onlyY = $('#pfYear').checked, viaOrg = $('#pfOrg').checked;
   if (!A || !B) { out.innerHTML = `<p class="empty">Pick two names from the list. Start typing and choose a suggestion.</p>`; return; }
@@ -1697,8 +1899,21 @@ function runPath() {
 
 // ---------- deals & empires ----------
 const ctip = $('#ctip');
-function showC(e, html) { ctip.innerHTML = html; ctip.hidden = false; const r = ctip.getBoundingClientRect(); let x = e.clientX + 12, y = e.clientY + 12; if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 12; if (y + r.height > innerHeight - 8) y = e.clientY - r.height - 12; ctip.style.left = x + 'px'; ctip.style.top = y + 'px'; }
-function hideC() { ctip.hidden = true; }
+// A chart note follows the mouse. Under a finger it sits above the touch, stays inside the screen and leaves on
+// the next touch, when the page scrolls, or after a few seconds.
+let lastPtr = 'mouse', ctipT = 0;
+addEventListener('pointerdown', e => { lastPtr = e.pointerType || 'mouse'; if (lastPtr !== 'mouse' && !ctip.hidden) hideC(); }, {capture:true, passive:true});
+addEventListener('pointermove', e => { lastPtr = e.pointerType || 'mouse'; }, {capture:true, passive:true});
+function showC(e, html) {
+  ctip.innerHTML = html; ctip.hidden = false; clearTimeout(ctipT);
+  const r = ctip.getBoundingClientRect(), touch = lastPtr !== 'mouse';
+  let x, y;
+  if (touch) { x = e.clientX - r.width / 2; y = e.clientY - r.height - 18; if (y < 8) y = e.clientY + 26; ctipT = setTimeout(hideC, 3600); }
+  else { x = e.clientX + 12; y = e.clientY + 12; if (x + r.width > innerWidth - 8) x = e.clientX - r.width - 12; if (y + r.height > innerHeight - 8) y = e.clientY - r.height - 12; }
+  ctip.style.left = Math.max(8, Math.min(innerWidth - r.width - 8, x)) + 'px'; ctip.style.top = Math.max(8, Math.min(innerHeight - r.height - 8, y)) + 'px';
+}
+function hideC() { clearTimeout(ctipT); ctip.hidden = true; }
+addEventListener('scroll', () => { if (!ctip.hidden) hideC(); }, {capture:true, passive:true});
 function linkPassesFilter(l) { if (!filterActive()) return true; return passes(l.s, l.y) || passes(l.t, l.y); }
 function renderDeals() {
   const Y = state.year, el = $('#tab-deals');
@@ -1818,7 +2033,7 @@ function renderEmpires() {
         <div class="gfilters" id="empKind" style="margin:10px 0 6px">${EMP_KINDS.map(([k, l]) => `<button class="fchip" data-k="${k}" aria-pressed="${k === EMP.kind}">${l}</button>`).join('')}</div>
         <ol class="rankbars" id="empRank"></ol></div>
       <div class="card" id="empTreeCard"><div class="cardhead"><div><h3 id="empTreeH">Group tree</h3><p class="sub" id="empTreeSub"></p></div>
-        <label class="chk" style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--ink-2)">Show the group of <input class="lfield" id="empPick" list="nodeNames" placeholder="family, state or company" autocomplete="off" style="min-height:34px;padding:5px 8px;width:200px"></label></div>
+        <label class="chk" style="display:flex;gap:6px;align-items:center;font-size:13px;color:var(--ink-2)">Show the group of <input class="lfield" id="empPick" data-ac="node" placeholder="family, state or company" autocomplete="off" style="width:200px"></label></div>
         <div class="ctlrow"><button class="btn ghost sm" data-tree="open">Expand all</button><button class="btn ghost sm" data-tree="close">Collapse</button><button class="btn ghost sm" data-tree="atlas">Show on the atlas</button><button class="btn ghost sm" data-dl="tree">CSV</button></div>
         <div class="treeout" id="empTree"></div>
         <h3 style="margin-top:16px">Stakes outside its control</h3><p class="sub">Effective stakes of 1% or more, through all ownership paths.</p><ul class="minorlist" id="empMinor"></ul></div>
@@ -2092,7 +2307,7 @@ function renderCompare() {
     el.dataset.init = 1;
     el.innerHTML = `<div class="card"><div class="cardhead"><div><h3>Compare up to four</h3><p class="sub">Side by side: ownership, control, size, deals and reach. Add any company, family, fund or government; the year follows the timeline.</p></div><button class="btn ghost sm" data-dl="cmp">CSV</button></div>
       <div class="cmp-pick" id="cmpPick"></div>
-      <form id="cmpForm" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><input class="lfield" id="cmpQ" list="nodeNames" placeholder="Add an entity" autocomplete="off" style="width:min(320px,100%)"><button class="btn" type="submit">Add</button>
+      <form id="cmpForm" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><input class="lfield" id="cmpQ" data-ac="node" data-ac-go placeholder="Add an entity" autocomplete="off" style="width:min(320px,100%)"><button class="btn" type="submit">Add</button>
       <span class="examples" style="margin:0" id="cmpEx"><span class="eyebrow" style="align-self:center;margin-right:2px">Try</span><button type="button" data-set="tcs,infosys,hcltech,wipro">Indian IT</button><button type="button" data-set="gov_cn,gov_in,gov_sa,gov_us">States</button><button type="button" data-set="walton,ambani_fam,arnault,page_brin">Families</button><button type="button" data-set="lic,sbi,bajaj_life,hdfclife">Indian insurers &amp; SBI</button></span></form>
       <div class="scrollx" style="margin-top:14px"><table class="dt cmptable" id="cmpT"></table></div></div>
       <div class="card chart" style="margin-top:16px"><h3>Holdings over time</h3><p class="sub">Companies held in each year, on the same scale.</p><div class="smgrid" id="cmpHold"></div></div>
@@ -2382,13 +2597,13 @@ function mapAct(act, ds) {
   else if (act === 'zoomto' && MAP.wzoom) { const p = worldGeo().cityPt[ds.city]; if (p) MAP.wzoom.to(p[0], p[1], 4); }
 }
 function renderMapCtl() {
-  const v = state.mapView, ind = `<label class="chk">Industry <select class="lfield" id="mInd" style="min-height:34px;padding:5px 8px">${'<option value="">All industries</option>' + Object.keys(IND).sort((a, b) => IND[a].localeCompare(IND[b])).map(k => `<option value="${k}"${state.filters.ind === k ? ' selected' : ''}>${esc(IND[k])}</option>`).join('')}</select></label>`;
+  const v = state.mapView, ind = `<label class="chk">Industry <select class="lfield" id="mInd">${'<option value="">All industries</option>' + Object.keys(IND).sort((a, b) => IND[a].localeCompare(IND[b])).map(k => `<option value="${k}"${state.filters.ind === k ? ' selected' : ''}>${esc(IND[k])}</option>`).join('')}</select></label>`;
   const seg = (opts, cur) => `<div class="segl">${opts.map(([k, l]) => `<button data-m="${k}" aria-pressed="${k === cur}">${l}</button>`).join('')}</div>`;
   const cm = seg(Object.entries(CITY_METRIC).map(([k, x]) => [k, x[0]]), state.cityMetric);
   let h = '';
   if (v === 'world') h = seg(WORLD_METRICS, state.mapMetric) + `<label class="chk"><input type="checkbox" id="mFlows"${state.mapFlows ? ' checked' : ''}> Deal corridors</label>` + ind;
   else if (v === 'cities') h = cm + `<label class="chk"><input type="checkbox" id="mLinks"${state.mapLinks ? ' checked' : ''}> Ownership links</label>` + ind +
-    `<label class="chk">Reach of <input class="lfield" id="mFoot" list="nodeNames" placeholder="any company or fund" autocomplete="off" style="min-height:34px;padding:5px 8px;width:210px" value="${state.mapFoot ? esc(byId.get(state.mapFoot).name) : ''}"></label>`;
+    `<label class="chk">Reach of <input class="lfield" id="mFoot" data-ac="node" placeholder="any company or fund" autocomplete="off" style="width:210px" value="${state.mapFoot ? esc(byId.get(state.mapFoot).name) : ''}"></label>`;
   else if (v === 'india') h = cm + `<label class="chk"><input type="checkbox" id="mShade"${state.indiaShade ? ' checked' : ''}> Shade states</label>` + ind;
   else h = cm + `<label class="chk"><input type="checkbox" id="mLinks"${state.mapLinks ? ' checked' : ''}> Ownership links</label><label class="chk"><input type="checkbox" id="mSpin"${GL.spin ? ' checked' : ''}> Spin</label>` + ind;
   const ctl = $('#mapCtl'); if (ctl.dataset.v !== v + '|' + h.length + '|' + state.filters.ind) { ctl.innerHTML = h; ctl.dataset.v = v + '|' + h.length + '|' + state.filters.ind; }
@@ -3168,10 +3383,9 @@ function mkStatus() {
   box.innerHTML = `<div class="row"><h3>Daily refresh</h3><button class="btn sm" data-act="mksync"${MK.busy ? ' disabled' : ''}>${MK.busy ? 'Checking…' : 'Check now'}</button></div>
   <p>The app downloads the newest atlas when it opens and about once a day in the background: today's market values and news, companies that crossed $3 billion, and owners found since.${info && info.pageUpdates ? ' New features and fixes arrive the same way, without reinstalling.' : ''}${info && info.lastTry ? ` Last checked ${esc(mkTime(info.lastTry))}.` : ''}</p>
   ${info && info.error ? `<p class="err">${esc(info.error)}</p>` : ''}
-  ${up ? `<p><b>Version ${esc(up.latestName || '')} of the app is out.</b> <a href="${esc(up.apk)}" target="_blank" rel="noopener">Download it</a> and open the file to update; your settings stay.</p>` : ''}`;
+  ${up ? (up.canInstall && up.apkReady ? `<p><b>Version ${esc(up.latestName || '')} of the app is ready.</b> <button class="btn sm" data-act="install">Install</button></p>` : `<p><b>Version ${esc(up.latestName || '')} of the app is out.</b> <a href="${esc(up.apk)}" target="_blank" rel="noopener">Download it</a> and open the file to update; your settings stay.</p>`) : ''}`;
 }
 function mkSyncNow() { if (!APP || !APP.syncNow || MK.busy) return; MK.busy = true; mkStatus(); try { APP.syncNow(); } catch (e) { MK.busy = false; mkStatus(); } }
-document.addEventListener('click', e => { if (e.target.closest('[data-act="reload"]')) location.reload(); });
 // Called by the app after each download attempt, with the same object liveInfo() returns.
 window.atlasLive = function (info) {
   MK.busy = false;
@@ -3179,10 +3393,12 @@ window.atlasLive = function (info) {
   const i = MK.info || {};
   // Offer a reload only for a download made since the page started (a file the page could not use stays ignored).
   const newData = i.hasData && typeof i.dataBuiltAt === 'string' && i.dataBuiltAt > (D.builtAt || '') && i.dataBuiltAt !== MK.bootBuilt;
-  if (i.pageUpdated || newData) toast(`<span>${i.pageUpdated ? 'The app downloaded an update.' : 'Newer data downloaded.'}</span><button class="btn sm" data-act="reload">Reload</button>`, 12000);
-  else if (i.manual && i.error) toast(esc(i.error));
-  else if (i.manual) toast('The atlas is up to date.');
+  if (i.pageUpdated || newData) updateReady(i.pageUpdated ? 'page' : 'data');
+  else if (i.manual && i.error) toast(esc(i.error), 7000, {kind:'warn', key:'sync'});
+  else if (i.manual) toast('The atlas is up to date.', 3200, {kind:'ok', key:'sync'});
+  appUpdateNote(i);
   if (state.tab === 'markets') mkStatus();
+  dockSync();
 };
 // ---------- directory ----------
 function renderDirectory() {
@@ -3289,6 +3505,7 @@ function renderMethod() {
   <section><h3>Who controls whom</h3><p>Every entity is traced up its chain of controlling owners for the year on the timeline. The rules, applied to completed deals only:</p><ul><li>Owners are grouped into blocks by who controls them, so Samsung Life and Samsung C&amp;T count as one Lee-family block.</li><li>A block with more than 50% of the votes has <b>majority control</b>. A takeover or state rescue with an undisclosed stake counts as <b>control</b>.</li><li>Otherwise the largest block has <b>effective control</b> at 30% of the votes, or 20% for a founder, promoter or joint-venture partner or a block of affiliated holders, unless a second block that also qualifies is within five points, or both are founders, promoters or partners (<b>joint control</b>, as at Titan, co-promoted by Tata and the Tamil Nadu state company TIDCO). Venture funding alone never counts.</li><li>Everything else has <b>no controlling owner</b>; the largest holder is still shown.</li><li>Where dual-class shares or holding structures give an owner more votes than shares, both are recorded (the Ford family: about 2% of the equity, 40% of the votes). "Controls the votes" marks owners known to control without a published figure.</li></ul><p>A <b>group</b> is an ultimate controller and everything below it. Group revenue counts each company once; <b>listed value</b> adds up the market values of the listed companies it controls, in full, the usual way group market value is reported; <b>stakes worth</b> multiplies each stake by market value, looking through unlisted holding companies and stopping at listed ones, whose prices already include their own holdings. <b>Effective stakes</b> multiply stakes along every ownership path, up to eight levels. Thresholds are a convention: real control also comes from board seats, shareholder agreements, golden shares and loans, which the atlas does not model, and passive index funds are mostly left out.</p></section>
   <section><h3>Power and flows</h3><ul><li><b>Network power</b>: an entity's own size (the square root of revenue plus a quarter of market value, or a small amount by scale tier when there are no figures) plus 85% of the power of what it owns, in proportion to its stakes. Undisclosed controlling stakes count as half, other undisclosed stakes as 2%.</li><li><b>Brokers</b>: betweenness centrality (Brandes' algorithm) on the network of links active in the year, ignoring direction.</li><li><b>Cross-border ownership</b>: active holdings whose owner and owned company sit in different regions; stake value is stake × today's market value.</li><li><b>Who controls each economy</b>: each country's companies by the type and home of their ultimate controller, weighted by revenue (each group counted once) or by number.</li><li><b>Industry flows</b>: active holdings, or disclosed deal value to date, from the owner's industry to the owned company's.</li></ul></section>
   <section><h3>Search, links and downloads</h3><ul><li>Ctrl + K (⌘ K on a Mac) or / opens search: any entity, country, industry, story or command; type a year to jump to it.</li><li>Every view has a name you can bookmark: the tab, then e- for an entity, y- for a year, g- for a group and c- for a comparison, as in <span class="mono">#empires.g-tata_trusts.y-2008</span>. "Copy link" builds the full address.</li><li>Tables download as CSV and charts and the network as PNG images. On claude.ai you confirm each download; in the Android app the share sheet opens.</li></ul><div class="dlrow"><button class="btn sm" data-dlset="nodes">Download all ${fmtN(nodes.length)} entities (CSV)</button><button class="btn ghost sm" data-dlset="links">Download all ${fmtN(links.length)} links (CSV)</button></div></section>
+  <section><h3>On a phone</h3><ul><li>The bar at the bottom jumps to the network, News, Markets and search. More opens the side tab.</li><li>The side tab on the right edge holds the profile of the selected company, today's status, moves and deals, every section and the themes. Swipe it to the right to close it.</li><li>Swiping up or down over the network scrolls the page. Pinch to zoom; once it is zoomed in, one finger moves it. The corner button opens it full screen.</li><li>In the Android app, new data and new versions of the atlas arrive by themselves. A new app is fetched by the app and installed with one tap.</li></ul></section>
   <section><h3>Keyboard</h3><p>Ctrl + K or / opens search. Alt + ← / → steps the year. Esc closes a profile, the search box or a story. The Directory tab is a full text version of the network.</p></section>
   </div>`;
   $('#tab-method').addEventListener('click', e => { const b = e.target.closest('[data-dlset]'); if (b) dlDataset(b.dataset.dlset); });
@@ -3353,8 +3570,40 @@ $('#themeMenu').addEventListener('keydown', e => { const items = $$('#themeMenu 
 document.addEventListener('click', e => { if (!$('#themeMenu').hidden && !e.target.closest('.themepick')) openThemeMenu(false); });
 
 // ---------- links, files and the command palette ----------
-const toastEl = $('#toast'); let toastT = 0;
-function toast(html, ms) { toastEl.innerHTML = html; toastEl.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { toastEl.hidden = true; }, ms || 2600); }
+// ---------- notices ----------
+// One stack above the bottom bar. A plain message leaves after a few seconds; one with something to do stays
+// until it is used or closed. A notice with a key replaces the earlier one with the same key.
+const notesEl = $('#notes'), NOTES = new Map(); let noteSeq = 0;
+const NOTE_ICON = {info:'i', ok:'✓', warn:'!', err:'!'};
+function note(o) {
+  const key = o.key || 'n' + (++noteSeq), kind = NOTE_ICON[o.kind] ? o.kind : 'info';
+  closeNote(key, true);
+  const el = document.createElement('div');
+  el.className = 'ntc ' + kind + (o.sticky ? ' sticky' : ''); el.dataset.key = key; el.setAttribute('role', kind === 'err' ? 'alert' : 'status');
+  el.innerHTML = `<span class="ntc-i" aria-hidden="true">${NOTE_ICON[kind]}</span><div class="ntc-b">${o.html}</div><button class="ntc-x" data-act="note-x" aria-label="Dismiss">✕</button>`;
+  notesEl.appendChild(el);
+  const rec = {el, t:0, onclose:o.onclose || null}; NOTES.set(key, rec);
+  if (!o.sticky) rec.t = setTimeout(() => closeNote(key), o.ms || 4200);
+  // three at most: the oldest message that needs no answer makes room
+  if (NOTES.size > 3) { const old = [...NOTES.keys()].find(k => k !== key && !NOTES.get(k).el.classList.contains('sticky')); if (old) closeNote(old, true); }
+  return key;
+}
+function closeNote(key, now, byUser) {
+  const r = NOTES.get(key); if (!r) return; clearTimeout(r.t); NOTES.delete(key);
+  if (byUser && r.onclose) { try { r.onclose(); } catch (e) { /* ignore */ } }
+  if (now || REDUCED) r.el.remove(); else { r.el.classList.add('out'); setTimeout(() => r.el.remove(), 180); }
+}
+function toast(html, ms, o) { return note(Object.assign({html:/<\w/.test(html) ? html : `<span>${html}</span>`, ms}, o || {})); }
+notesEl.addEventListener('click', e => { const x = e.target.closest('[data-act="note-x"]'); if (x) closeNote(x.closest('.ntc').dataset.key, false, true); });
+// a sideways swipe throws a notice away
+notesEl.addEventListener('pointerdown', e => {
+  const n = e.target.closest('.ntc'); if (!n || e.pointerType === 'mouse' || e.target.closest('button,a,input')) return;
+  const x0 = e.clientX; let dx = 0;
+  const mv = ev => { dx = ev.clientX - x0; if (Math.abs(dx) > 8) { n.style.transform = `translateX(${dx}px)`; n.style.opacity = String(Math.max(.25, 1 - Math.abs(dx) / 240)); } };
+  const up = () => { n.removeEventListener('pointermove', mv); n.removeEventListener('pointerup', up); n.removeEventListener('pointercancel', up);
+    if (Math.abs(dx) > 84) closeNote(n.dataset.key, false, true); else { n.style.transform = ''; n.style.opacity = ''; } };
+  n.addEventListener('pointermove', mv); n.addEventListener('pointerup', up); n.addEventListener('pointercancel', up);
+});
 // Views have bookmarkable names: tab, then optional parts e-<entity>, y-<year>, g-<group head>, c-<a~b~c> (compare).
 function viewToken() {
   const p = [state.tab];
@@ -3387,8 +3636,8 @@ function viewURL() {
 }
 function copyLink() {
   const url = viewURL();
-  const fallback = () => { toast(`<span>Copy this link:</span><input readonly value="${esc(url)}" aria-label="Link to this view">`, 9000); const i = toastEl.querySelector('input'); if (i) { i.focus(); i.select(); } };
-  try { navigator.clipboard.writeText(url).then(() => toast('Link to this view copied'), fallback); } catch (e) { fallback(); }
+  const fallback = () => { const k = toast(`<span>Copy this link:</span><input readonly value="${esc(url)}" aria-label="Link to this view">`, 15000, {key:'link'}); const r = NOTES.get(k), i = r && r.el.querySelector('input'); if (i) { i.focus(); i.select(); } };
+  try { navigator.clipboard.writeText(url).then(() => toast('Link to this view copied.', 3000, {kind:'ok', key:'link'}), fallback); } catch (e) { fallback(); }
 }
 // Files: the Android app saves through its bridge, claude.ai asks the viewer to confirm a download, and a saved
 // copy of the page uses an ordinary download link.
@@ -3441,11 +3690,22 @@ function scoreName(e, q, qw) {
   if (e.k === q) return 1000; if (e.k.startsWith(q)) return 800 - e.k.length;
   if (qw.every(t => e.w.some(w => w.startsWith(t)))) return 600 - e.k.length;
   if (e.k.includes(q)) return 400 - e.k.length;
-  let i = 0; for (const ch of q) { i = e.k.indexOf(ch, i); if (i < 0) return -1; i++; } return 100 - e.k.length;
+  return -1;
+}
+// The letters in order, with gaps: a last resort for a slip of the finger ("relaince"), not mixed into real matches.
+function looseScore(e, q) { let i = 0, first = -1; for (const ch of q) { i = e.k.indexOf(ch, i); if (i < 0) return -1; if (first < 0) first = i; i++; } return i - first > q.length * 2 ? -1 : 100 - e.k.length - (i - first); }
+function searchNodes(qRaw, limit) {
+  const q = fold(String(qRaw || '').trim()); if (!q) return [];
+  const qw = q.split(/\s+/).filter(Boolean); let hits = [];
+  for (const e of SEARCH) { const sc = scoreName(e, q, qw); if (sc >= 0) hits.push({e, s:sc}); }
+  if (!hits.length && q.length >= 4) for (const e of SEARCH) { const sc = looseScore(e, q); if (sc >= 0) hits.push({e, s:sc}); }
+  hits.sort((a, b) => b.s - a.s || b.e.n.tier - a.e.n.tier || (a.e.n.auto ? 1 : 0) - (b.e.n.auto ? 1 : 0) || b.e.n.deg - a.e.n.deg);
+  return hits.slice(0, limit || 8).map(x => x.e.n);
 }
 function cmdCommands() {
-  const tabLabel = {stories:'Stories', empires:'Empires', power:'Power & flows', paths:'Connection finder', deals:'Deals', fin:'Financials', markets:'Markets', map:'Maps', compare:'Compare', directory:'Directory', fallen:'Fallen giants', method:'Method & sources'};
-  const c = TABS.map(t => ({g:'Go to', t:tabLabel[t], kw:'tab ' + tabLabel[t], ico:'→', run:() => openTab(t, true)}));
+  const c = TABS.map(t => ({g:'Go to', t:TAB_LABEL[t], kw:'tab ' + TAB_LABEL[t], ico:'→', run:() => openTab(t, true)}));
+  c.push({g:'Go to', t:'Side tab: today, details and menu', kw:'side tab drawer today status update version menu details', ico:'→', run:() => openDock()});
+  c.push({g:'View', t:'Network full screen', kw:'full screen fullscreen expand network', ico:'⛶', run:() => { $('.instrument').scrollIntoView({block:'start'}); setFull(true); }});
   c.push({g:'Timeline', t:state.playing ? 'Pause the timeline' : 'Play the timeline', kw:'play pause animate', ico:'▶', run:() => { state.playing ? stopPlay() : startPlay(); $('.instrument').scrollIntoView({behavior:REDUCED ? 'auto' : 'smooth', block:'start'}); }});
   [['ind', 'Industries'], ['region', 'Regions'], ['free', 'Connections'], ['group', 'Groups']].forEach(([v, l]) => c.push({g:'Layout', t:'Arrange by ' + l.toLowerCase(), kw:'layout arrange cluster ' + l, ico:'◎', run:() => setLayout(v)}));
   c.push({g:'View', t:(state.failed ? 'Hide' : 'Show') + ' failed deals', kw:'failed blocked deals toggle', ico:'×', run:() => $('#tFailed').click()});
@@ -3469,10 +3729,11 @@ function cmdSearch(qRaw) {
     cmdCommands().filter(c => c.g === 'Go to').forEach(c => out.push(c));
     return out;
   }
-  const ents = SEARCH.map(e => ({e, s:scoreName(e, q, qw)})).filter(x => x.s >= 0).sort((a, b) => b.s - a.s || b.e.n.tier - a.e.n.tier).slice(0, 9);
+  let ents = SEARCH.map(e => ({e, s:scoreName(e, q, qw)})).filter(x => x.s >= 0).sort((a, b) => b.s - a.s || b.e.n.tier - a.e.n.tier).slice(0, 9);
   // Listed companies worth $10B+ that are not in the map yet; scored like names so real matches beat loose ones.
   const mks = MK.data && q.length > 1 ? MK.data.rows.filter(r => !r.node).map(r => { const w = r.k.split(/[^a-z0-9]+/);
     return {r, s:r.k.startsWith(q) ? 800 : qw.every(t => w.some(x => x.startsWith(t))) ? 600 : r.k.includes(q) ? 400 : -1}; }).filter(x => x.s > 0).sort((a, b) => b.s - a.s || b.r.m - a.r.m).slice(0, 5) : [];
+  if (!ents.length && !mks.length && q.length >= 4) ents = SEARCH.map(e => ({e, s:looseScore(e, q)})).filter(x => x.s >= 0).sort((a, b) => b.s - a.s || b.e.n.tier - a.e.n.tier).slice(0, 6);
   const entOut = () => ents.forEach(x => out.push(entItem(x.e.n))), mkOut = () => mks.forEach(({r}) => out.push({g:'Listed companies, not mapped yet', t:r.n, ico:'$', meta:`${mkCountry(r.cc)} · ${fmtV(r.m)}`, run:() => mkFocus(r)}));
   if (mks.length && (!ents.length || mks[0].s > ents[0].s)) { mkOut(); entOut(); } else { entOut(); mkOut(); }
   cmdCommands().map(c => ({c, s:(() => { const k = fold(c.t + ' ' + c.kw); return qw.every(t => k.includes(t)) ? (fold(c.t).startsWith(q) ? 2 : 1) : 0; })()})).filter(x => x.s).sort((a, b) => b.s - a.s).slice(0, 12).forEach(x => out.push(x.c));
@@ -3510,6 +3771,362 @@ document.addEventListener('keydown', e => {
   if (e.key === '/' && !e.target.matches('input,select,textarea') && $('#cmdk').hidden) { e.preventDefault(); openCmd(); }
 });
 
+// ====================================================================================================
+// Ergonomics: the side tab, the bottom bar, pickers and suggestions drawn by the page, touch, updates
+// ====================================================================================================
+const UI_VERSION = '2.0';
+const WHATS_NEW = [
+  'A side tab on the right edge: the selected company, today’s moves and deals, every section, and the settings.',
+  'On phones, a bar at the bottom for Atlas, News, Markets, Search and More, and the sections stay within reach as you scroll.',
+  'Pickers and search suggestions are drawn by the atlas, so they work the same on every phone.',
+  'Notices stack above the bar and wait when they need an answer. Chart notes no longer stick to the screen.',
+  'Swiping up or down over the network scrolls the page. Pinch to zoom, then drag, or open it full screen.',
+  'New versions arrive by themselves: the atlas and its data when you open the app, the app itself with one tap.'
+];
+const mq = q => (window.matchMedia ? matchMedia(q) : {matches:false});
+const onMQ = (m, fn) => { if (m.addEventListener) m.addEventListener('change', fn); else if (m.addListener) m.addListener(fn); };
+const narrowMQ = mq('(max-width:1000px)'), phoneMQ = mq('(max-width:760px)');
+const isNarrow = () => !!narrowMQ.matches, isPhone = () => !!phoneMQ.matches;
+const smooth = () => (REDUCED ? 'auto' : 'smooth');
+const TAB_LABEL = {stories:'Stories', news:'News', empires:'Empires', power:'Power & flows', paths:'Connection finder', deals:'Deals', fin:'Financials', markets:'Markets', map:'Maps', compare:'Compare', directory:'Directory', fallen:'Fallen giants', method:'Method & sources'};
+function goTo(k) {
+  if (k === 'net') $('.instrument').scrollIntoView({behavior:smooth(), block:'start'});
+  else if (k === 'search') openCmd();
+  else if (k === 'more') openDock('menu');
+  else if (TAB_LABEL[k]) openTab(k, true);
+}
+
+// ---------- the side tab ----------
+// A drawer from the right edge. On narrow screens it holds the profile of the selected company (wide screens show
+// that beside the network), plus "Today" (status, updates, the day's moves and deals) and "Menu" (every section,
+// tools, themes).
+const DOCK = {open:false, pane:'today', prev:null};
+const dock = $('#dock'), dockTab = $('#dockTab'), dockBody = $('#dockBody');
+function placeSide() {
+  const pane = $('#dockDetails'), stage = $('.stage');
+  if (isNarrow()) { if (side.parentNode !== pane) pane.appendChild(side); }
+  else { if (side.parentNode !== stage) stage.appendChild(side); if (DOCK.pane === 'details') DOCK.pane = 'today'; }
+  $('#dockSeg [data-p="details"]').hidden = !isNarrow();
+  dockShow(); dockSync();
+}
+function dockShow() {
+  $$('#dockSeg [data-p]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.p === DOCK.pane)));
+  $('#dockDetails').hidden = DOCK.pane !== 'details'; $('#dockToday').hidden = DOCK.pane !== 'today'; $('#dockMenu').hidden = DOCK.pane !== 'menu';
+  if (!DOCK.open) return;
+  if (DOCK.pane === 'today') renderDockToday(); else if (DOCK.pane === 'menu') renderDockMenu();
+}
+function openDock(pane) {
+  if (!pane) pane = isNarrow() && state.selected ? 'details' : 'today';
+  if (pane === 'details' && !isNarrow()) pane = 'today';
+  DOCK.pane = pane;
+  if (!DOCK.open) {
+    DOCK.prev = document.activeElement; DOCK.open = true;
+    dock.classList.add('open'); $('#dockScrim').classList.add('open'); document.body.classList.add('dock-open'); dockTab.setAttribute('aria-expanded', 'true');
+    const pg = $('.page'); if (pg && 'inert' in pg) pg.inert = true;
+    hideC(); showTip(null); acClose();
+  }
+  dockShow(); dockBody.scrollTop = 0;
+  try { dock.focus({preventScroll:true}); } catch (e) { /* ignore */ }
+}
+function closeDock() {
+  if (!DOCK.open) return;
+  DOCK.open = false; dock.classList.remove('open'); $('#dockScrim').classList.remove('open'); document.body.classList.remove('dock-open'); dockTab.setAttribute('aria-expanded', 'false');
+  const pg = $('.page'); if (pg && 'inert' in pg) pg.inert = false;
+  const p = DOCK.prev; DOCK.prev = null; if (p && p.focus && document.contains(p)) { try { p.focus({preventScroll:true}); } catch (e) { /* ignore */ } }
+}
+function dockSync() {
+  const upd = !!UPD.pending || !!appUpdate(MK.info);
+  $('#dockDot').hidden = !(upd || (isNarrow() && !!state.selected));
+  const d2 = $('#dockBtnDot'); if (d2) d2.hidden = !upd;
+  if (DOCK.open) { if (DOCK.pane === 'today') renderDockToday(); else if (DOCK.pane === 'menu') renderDockMenu(); }
+}
+const APP_NAMES = {8:'1.7', 9:'1.8', 10:'1.9'};
+const appName = i => (i ? String(i.appName || APP_NAMES[i.appCode] || '') : '');
+function renderDockToday() {
+  const el = $('#dockToday'), info = MK.info, mk = MK.data, up = appUpdate(info);
+  const meta = ['Version ' + UI_VERSION];
+  if (APP) { const an = appName(info); if (an) meta.push('app ' + an); if (info && info.lastTry) meta.push('checked ' + mkTime(info.lastTry)); }
+  let h = `<div class="ey">Today</div><h2>Data of ${esc(dataDay())}</h2><p class="dmeta">${esc(meta.join(' · '))}</p>`;
+  if (UPD.pending) h += `<div class="dupd"><p><b>${UPD.pending === 'page' ? 'A new version of the atlas is ready.' : 'Today’s data is ready.'}</b><small>It also switches by itself the next time you open the app.</small></p><button class="ibtn pri" data-act="reload">Update now</button></div>`;
+  if (up) h += up.canInstall && up.apkReady
+    ? `<div class="dupd"><p><b>App ${esc(up.latestName || '')} is ready to install.</b><small>Android asks you to confirm. Your settings stay.</small></p><button class="ibtn pri" data-act="install">Install</button></div>`
+    : `<div class="dupd"><p><b>App ${esc(up.latestName || '')} is out.</b><small>Download it and open the file to install. Your settings stay.</small></p><a class="ibtn pri" href="${esc(up.apk)}" target="_blank" rel="noopener">Download</a></div>`;
+  if (APP) h += `${info && info.error ? `<p style="color:var(--i-critical)">${esc(info.error)}</p>` : ''}<div class="pact"><button class="ibtn" data-act="dock-sync"${MK.busy ? ' disabled' : ''}>${MK.busy ? 'Checking…' : 'Check for updates'}</button></div>`;
+  else h += `<p>${/(^|\.)github\.io$/.test(location.hostname) ? 'Refreshed every weekday after the US market closes.' : `This copy is a snapshot. The <a href="${SITE_URL}" target="_blank" rel="noopener" style="color:var(--i-accent)">published atlas</a> is refreshed every weekday.`}</p>`;
+  if (mk) {
+    const rows = mk.rows, withD = rows.filter(r => r.d1 != null), day = withD.length ? d3.sum(withD, r => r.m * r.d1) / d3.sum(withD, r => r.m) : null;
+    h += `<h3>Listed companies · ${esc(mkWhen())}</h3><dl class="statgrid"><div><dt>Combined value</dt><dd>${fmtV(d3.sum(rows, r => r.m))}</dd></div><div><dt>On the day</dt><dd class="${chgCls(day)}">${day == null ? '–' : fmtChg(day)}</dd></div><div><dt>Rose</dt><dd>${fmtN(withD.filter(r => r.d1 > 0).length)}</dd></div><div><dt>Fell</dt><dd>${fmtN(withD.filter(r => r.d1 < 0).length)}</dd></div></dl>`;
+  }
+  const day0 = nwDays()[0];
+  if (day0) {
+    const moves = Array.isArray(day0.moves) ? day0.moves : [], items = Array.isArray(day0.items) ? day0.items : [];
+    const row = r => `<li>${r.a && byId.has(r.a) ? `<button class="nm" data-node="${esc(r.a)}"><span>${esc(r.n)}</span></button>` : `<button class="nm" data-msym="${esc(r.s)}"><span>${esc(r.n)}</span></button>`}<span class="meta${r.dv < 0 ? ' neg' : ''}">${r.dv < 0 ? '−' : '+'}${fmtB(Math.abs(r.dv) / 1000)} · ${fmtChg(r.d1)}</span></li>`;
+    const top = moves.filter(r => r.dv > 0).slice(0, 3).concat(moves.filter(r => r.dv < 0).slice(0, 3));
+    if (top.length) h += `<h3>Biggest moves in value · ${esc(nwDate(day0.d))}</h3><ul class="rel">${top.map(row).join('')}</ul>`;
+    const deals = items.filter(i => i.k === 'deal').slice(0, 3);
+    if (deals.length) h += `<h3>Deals in the news</h3><ul class="dnews">${deals.map(i => `<li><a href="${esc(i.u)}" target="_blank" rel="noopener noreferrer">${esc(i.t)}</a><small>${esc(i.src || '')}${i.src && i.at ? ' · ' : ''}${esc(nwWhen(i.at))}</small></li>`).join('')}</ul>`;
+  }
+  h += `<div class="pact"><button class="ibtn" data-go="news">All news</button><button class="ibtn" data-go="markets">Markets</button></div>`;
+  el.innerHTML = h;
+}
+function renderDockMenu() {
+  const el = $('#dockMenu'), cur = savedTheme(), was = el.querySelector('details') && el.querySelector('details').open;
+  const places = [['net', 'The network']].concat(TABS.map(t => [t, TAB_LABEL[t]]));
+  el.innerHTML = `<h3 style="margin-top:0">Go to</h3><div class="dgrid">${places.map(([k, l]) => `<button class="ibtn" data-go="${k}"${k === state.tab ? ' aria-current="true"' : ''}>${esc(l)}</button>`).join('')}</div>
+  <h3>Tools</h3><div class="dgrid"><button class="ibtn" data-tool="search">Search</button><button class="ibtn" data-tool="link">Copy a link to this view</button><button class="ibtn" data-tool="full">Network full screen</button><button class="ibtn" data-tool="png">Save the network image</button><button class="ibtn" data-tool="data">Download the data</button><button class="ibtn" data-tool="reset">Reset filters and view</button></div>
+  <h3>Colour theme</h3><div class="dthemes" role="radiogroup" aria-label="Colour theme">${THEMES.map(t => `<button role="radio" aria-checked="${t.id === cur}" data-theme-id="${t.id}"><span class="tsw" style="${swStyle(t.sw)}" aria-hidden="true"></span><span>${esc(t.name)}</span></button>`).join('')}</div>
+  <h3>About</h3><p>Version ${UI_VERSION}${APP && appName(MK.info) ? ' · app ' + esc(appName(MK.info)) : ''} · data of ${esc(dataDay())}.</p>
+  <details id="dockNew"${was ? ' open' : ''}><summary>New in version ${UI_VERSION}</summary><ul>${WHATS_NEW.map(x => `<li>${esc(x)}</li>`).join('')}</ul></details>`;
+}
+function dockTool(k) {
+  if (k === 'link') { copyLink(); return; }
+  closeDock();
+  if (k === 'search') openCmd();
+  else if (k === 'png') saveNetworkPng();
+  else if (k === 'full') setFull(true);
+  else if (k === 'data') openTab('method', true);
+  else if (k === 'reset') { $('#resetAll').click(); goTo('net'); }
+}
+dockTab.addEventListener('click', () => openDock());
+{ const b = $('#dockBtn'); if (b) b.addEventListener('click', () => openDock('today')); }
+$('#dockScrim').addEventListener('click', closeDock);
+dock.addEventListener('click', e => {
+  const t = e.target;
+  const p = t.closest('#dockSeg [data-p]'); if (p) { DOCK.pane = p.dataset.p; dockShow(); dockBody.scrollTop = 0; return; }
+  if (t.closest('#dockX')) { closeDock(); return; }
+  if (t.closest('#side')) {   // the profile handles its own buttons; here only what the drawer adds
+    const a = t.closest('[data-act]');
+    if (a && (a.dataset.act === 'center' || a.dataset.act === 'ego')) { closeDock(); $('.instrument').scrollIntoView({behavior:smooth(), block:'start'}); }
+    else if (t.closest('[data-node]')) dockBody.scrollTop = 0;
+    return;
+  }
+  const go = t.closest('[data-go]'); if (go) { closeDock(); goTo(go.dataset.go); return; }
+  const tool = t.closest('[data-tool]'); if (tool) { dockTool(tool.dataset.tool); return; }
+  const th = t.closest('[data-theme-id]'); if (th) { setTheme(th.dataset.themeId, true); renderDockMenu(); return; }
+  const a = t.closest('[data-act]'); if (a) { if (a.dataset.act === 'dock-sync') { mkSyncNow(); renderDockToday(); } return; }   // "reload" and "install" are handled for the whole page
+  const nb = t.closest('[data-node]'); if (nb) { const n = byId.get(nb.dataset.node); if (n) { if (!isNarrow()) closeDock(); select(n, {center:true, scroll:true}); } return; }
+  const ms = t.closest('[data-msym]'); if (ms && MK.data) { closeDock(); openTab('markets', true); mkOpen(ms.dataset.msym); }
+});
+// a swipe to the right closes the drawer
+{ let sw = null;
+  dock.addEventListener('touchstart', e => { sw = e.touches.length === 1 ? {x:e.touches[0].clientX, y:e.touches[0].clientY, on:false} : null; }, {passive:true});
+  dock.addEventListener('touchmove', e => { if (!sw) return; const dx = e.touches[0].clientX - sw.x, dy = e.touches[0].clientY - sw.y;
+    if (!sw.on) { if (dx > 16 && dx > Math.abs(dy) * 1.7) sw.on = true; else if (Math.abs(dy) > 16 || dx < -16) { sw = null; return; } else return; }
+    dock.style.transition = 'none'; dock.style.transform = `translateX(${Math.max(0, dx)}px)`; }, {passive:true});
+  const end = e => { if (!sw) return; const on = sw.on, dx = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX - sw.x : 0; sw = null; dock.style.transition = ''; dock.style.transform = ''; if (on && dx > 90) closeDock(); };
+  dock.addEventListener('touchend', end); dock.addEventListener('touchcancel', end); }
+
+// ---------- the bottom bar (phones) ----------
+$('#bnav').addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (!b) return; const k = b.dataset.go; if (k !== 'more') closeDock(); setFull(false); goTo(k); });
+let navRaf = 0;
+function navSync() {
+  const cur = $('#tabs').getBoundingClientRect().top < innerHeight * .5 ? (state.tab === 'news' || state.tab === 'markets' ? state.tab : '') : 'net';
+  $$('#bnav [data-go]').forEach(b => b.setAttribute('aria-current', String(b.dataset.go === cur)));
+}
+addEventListener('scroll', () => { if (!navRaf) navRaf = requestAnimationFrame(() => { navRaf = 0; navSync(); }); }, {passive:true});
+// the bar steps aside while the keyboard is up
+const TEXTY = 'input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]):not([type=submit]):not([readonly]),textarea';
+document.addEventListener('focusin', e => { if (e.target.matches && e.target.matches(TEXTY)) document.body.classList.add('kb'); });
+document.addEventListener('focusout', () => setTimeout(() => { const a = document.activeElement; if (!a || !a.matches || !a.matches(TEXTY)) document.body.classList.remove('kb'); }, 80));
+
+// ---------- the network under a finger ----------
+// Swiping over the network scrolls the page. It takes one-finger drags only once it has been pinched in (or is
+// full screen); two fingers always zoom and move it.
+let fitK = 0, pinched = false, netTouch = null, netHintT = 0;
+const netEngaged = () => wrap.classList.contains('full') || (pinched && fitK > 0 && tf.k > fitK * 1.06);
+function netEngage() { canvas.classList.toggle('eng', netEngaged()); }
+function zoomFilter(e) { if (e.type === 'touchstart') return e.touches.length > 1 || netEngaged(); return (!e.ctrlKey || e.type === 'wheel') && !e.button; }
+function zoomed(e) {
+  tf = e.transform; const se = e.sourceEvent;
+  if (se && se.touches && se.touches.length > 1) pinched = true;
+  if (pinched && fitK > 0 && tf.k <= fitK * 1.06) pinched = false;
+  netEngage();
+}
+canvas.addEventListener('touchstart', e => { netTouch = e.touches.length === 1 ? {x:e.touches[0].clientX, y:e.touches[0].clientY} : null; }, {passive:true});
+canvas.addEventListener('touchmove', e => {
+  if (!netTouch || e.touches.length !== 1 || netEngaged()) return;
+  const dx = e.touches[0].clientX - netTouch.x, dy = e.touches[0].clientY - netTouch.y;
+  if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.3) { netTouch = null; const h = $('#netHint'); h.textContent = 'Pinch to zoom, then drag to move. Two fingers move it too.'; h.hidden = false; clearTimeout(netHintT); netHintT = setTimeout(() => { h.hidden = true; }, 2800); }
+}, {passive:true});
+function setFull(on) {
+  on = !!on; if (wrap.classList.contains('full') === on) return;
+  wrap.classList.toggle('full', on); document.body.classList.toggle('netfull', on);
+  const b = $('#zfull'); b.setAttribute('aria-pressed', String(on)); b.setAttribute('aria-label', on ? 'Leave full screen' : 'Network full screen'); b.title = on ? 'Leave full screen' : 'Full screen';
+  if (on) { hideC(); showTip(null); }
+  netEngage();
+  setTimeout(() => { resize(); fitTo(vis.arr.filter(n => vis.core.has(n)), 30, 0); if (!on) $('.instrument').scrollIntoView({block:'start'}); }, 80);
+}
+$('#zfull').addEventListener('click', () => setFull(!wrap.classList.contains('full')));
+
+// ---------- pickers: every <select> opens a list drawn by the page ----------
+// The field itself stays a real <select> (so everything that reads its value or listens for "change" works as
+// before); only the list is replaced: a sheet from the bottom on phones, a list under the field elsewhere.
+const PICK = {sel:null, all:[], items:[], act:0, type:'', typeT:0};
+const pick = $('#pick'), pickBox = $('.pickbox', pick), pickList = $('#pickList'), pickQ = $('#pickQ');
+function pickTitle(sel) {
+  const a = sel.getAttribute('aria-label'); if (a) return a;
+  const lab = sel.closest('label'); if (lab) { const t = [...lab.childNodes].filter(x => x.nodeType === 3).map(x => x.textContent.trim()).join(' ').trim(); if (t) return t; }
+  return 'Choose';
+}
+function pickRender() {
+  const cur = PICK.sel.value;
+  pickList.innerHTML = PICK.items.length ? PICK.items.map((o, i) => `<div role="option" id="pk-o${i}" data-i="${i}" class="${i === PICK.act ? 'act' : ''}" aria-selected="${o.v === cur}"><span class="ck" aria-hidden="true">${o.v === cur ? '✓' : ''}</span><span>${esc(o.t)}</span></div>`).join('') : '<div class="none">Nothing matches.</div>';
+  const a = $('#pk-o' + PICK.act); if (a) a.scrollIntoView({block:'nearest'});
+}
+function pickFilter(q) {
+  const k = fold(q.trim()); PICK.items = k ? PICK.all.filter(o => o.k.includes(k)) : PICK.all.slice();
+  const cur = PICK.sel.value; PICK.act = Math.max(0, PICK.items.findIndex(o => o.v === cur)); pickRender();
+}
+function pickPlace() {
+  const sheet = isPhone(); pick.classList.toggle('sheet', sheet); pick.classList.toggle('pop', !sheet);
+  pickBox.style.cssText = ''; if (sheet) return;
+  const r = PICK.sel.getBoundingClientRect(), w = Math.min(innerWidth - 16, Math.max(r.width, 250)), below = innerHeight - r.bottom - 12, above = r.top - 12, up = below < 230 && above > below;
+  pickBox.style.width = w + 'px'; pickBox.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px'; pickBox.style.maxHeight = Math.max(160, Math.min(430, up ? above : below)) + 'px';
+  if (up) pickBox.style.bottom = (innerHeight - r.top + 4) + 'px'; else pickBox.style.top = (r.bottom + 4) + 'px';
+}
+function openPick(sel) {
+  if (PICK.sel === sel) return; if (PICK.sel) closePick(false);
+  hideC(); acClose();
+  PICK.sel = sel; PICK.type = '';
+  PICK.all = [...sel.options].filter(o => !o.disabled).map(o => ({v:o.value, t:o.textContent.trim(), k:fold(o.textContent)}));
+  $('#pickT').textContent = pickTitle(sel);
+  pickQ.hidden = PICK.all.length <= 10; pickQ.value = '';
+  pick.hidden = false; pickPlace(); pickFilter('');
+  sel.setAttribute('aria-expanded', 'true');
+  try { (!pickQ.hidden && !isPhone() ? pickQ : pickBox).focus({preventScroll:true}); } catch (e) { /* ignore */ }
+  const a = $('#pk-o' + PICK.act); if (a) a.scrollIntoView({block:'center'});
+}
+function closePick(restore) {
+  const sel = PICK.sel; if (!sel) return; PICK.sel = null; pick.hidden = true; sel.removeAttribute('aria-expanded');
+  if (restore !== false && document.contains(sel)) { try { sel.focus({preventScroll:true}); } catch (e) { /* ignore */ } }
+}
+function pickChoose(i) {
+  const o = PICK.items[i], sel = PICK.sel; if (!o || !sel) return;
+  const changed = sel.value !== o.v; closePick();
+  if (changed) { sel.value = o.v; sel.dispatchEvent(new Event('input', {bubbles:true})); sel.dispatchEvent(new Event('change', {bubbles:true})); }
+}
+const selOf = t => { const s = t && t.closest ? t.closest('select') : null; return s && !s.disabled && !s.multiple ? s : null; };
+document.addEventListener('mousedown', e => { const s = selOf(e.target); if (!s || e.button) return; e.preventDefault(); openPick(s); }, true);
+{ let pt = null;
+  document.addEventListener('touchstart', e => { const s = selOf(e.target); pt = s && e.touches.length === 1 ? {s, x:e.touches[0].clientX, y:e.touches[0].clientY} : null; }, {capture:true, passive:true});
+  document.addEventListener('touchend', e => { const p = pt; pt = null; if (!p) return; const t = e.changedTouches[0]; if (!t || Math.hypot(t.clientX - p.x, t.clientY - p.y) > 14) return; if (e.cancelable) e.preventDefault(); openPick(p.s); }, {capture:true, passive:false}); }
+document.addEventListener('keydown', e => { const s = e.target; if (!s || s.tagName !== 'SELECT' || s.disabled || s.multiple) return;
+  if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'F4') { e.preventDefault(); openPick(s); } }, true);
+pick.addEventListener('click', e => { const o = e.target.closest('[data-i]'); if (o) { pickChoose(+o.dataset.i); return; } if (e.target === pick || e.target.closest('[data-act="pick-x"]')) closePick(); });
+pickQ.addEventListener('input', () => pickFilter(pickQ.value));
+pick.addEventListener('keydown', e => {
+  const n = PICK.items.length;
+  if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); e.stopPropagation(); closePick(); }
+  else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (n) { PICK.act = Math.max(0, Math.min(n - 1, PICK.act + (e.key === 'ArrowDown' ? 1 : -1))); pickRender(); } }
+  else if (e.key === 'Home' || e.key === 'End' || e.key === 'PageDown' || e.key === 'PageUp') { if (e.target === pickQ && (e.key === 'Home' || e.key === 'End')) return; e.preventDefault(); if (n) { PICK.act = e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : Math.max(0, Math.min(n - 1, PICK.act + (e.key === 'PageDown' ? 8 : -8))); pickRender(); } }
+  else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); pickChoose(PICK.act); }
+  else if (pickQ.hidden && e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {   // short lists: type the first letters
+    clearTimeout(PICK.typeT); PICK.type += e.key; PICK.typeT = setTimeout(() => { PICK.type = ''; }, 700);
+    const k = fold(PICK.type), i = PICK.items.findIndex(o => o.k.startsWith(k)); if (i >= 0) { PICK.act = i; pickRender(); }
+  }
+});
+pickList.addEventListener('mousemove', e => { if (lastPtr !== 'mouse') return; const o = e.target.closest('[data-i]'); if (!o || +o.dataset.i === PICK.act) return; PICK.act = +o.dataset.i; $$('[role=option]', pickList).forEach(x => x.classList.toggle('act', x === o)); });
+addEventListener('scroll', e => { if (PICK.sel && !isPhone() && !(e.target && e.target.nodeType === 1 && pick.contains(e.target))) closePick(false); }, {passive:true, capture:true});
+addEventListener('resize', () => { if (PICK.sel) pickPlace(); });
+
+// ---------- suggestions under a name field (in place of the browser's own list) ----------
+const AC = {inp:null, items:[], act:0, lock:false, last:null};
+const acList = $('#acList');
+function acPlace() {
+  const inp = AC.inp; if (!inp || acList.hidden) return;
+  const r = inp.getBoundingClientRect(), vv = window.visualViewport, top0 = vv ? vv.offsetTop : 0, vh = vv ? vv.height + vv.offsetTop : innerHeight, vw = innerWidth;
+  if (r.bottom < top0 || r.top > vh) { acClose(); return; }
+  const w = Math.min(vw - 16, Math.max(r.width, 280)), below = vh - r.bottom - 10, above = r.top - top0 - 10, up = below < 150 && above > below;
+  acList.style.width = w + 'px'; acList.style.left = Math.max(8, Math.min(r.left, vw - w - 8)) + 'px'; acList.style.maxHeight = Math.max(100, Math.min(340, up ? above : below)) + 'px';
+  if (up) { acList.style.top = ''; acList.style.bottom = (innerHeight - r.top + 4) + 'px'; } else { acList.style.bottom = ''; acList.style.top = (r.bottom + 4) + 'px'; }
+}
+function acRender() {
+  const inp = AC.inp; if (!inp) return;
+  if (!AC.items.length) { acClose(); return; }
+  acList.innerHTML = AC.items.map((n, i) => `<div role="option" id="ac-o${i}" data-i="${i}" class="${i === AC.act ? 'act' : ''}" aria-selected="${i === AC.act}"><span class="odot" style="--c:${lCol(classAt(n, state.year))}"></span><span class="t"><b>${esc(n.name)}</b><small>${esc(COUNTRY[n.cc].name)} · ${esc(IND[n.ind])}</small></span></div>`).join('');
+  acList.hidden = false; inp.setAttribute('aria-expanded', 'true'); inp.setAttribute('aria-activedescendant', 'ac-o' + AC.act); acPlace();
+  const cur = $('#ac-o' + AC.act); if (cur) cur.scrollIntoView({block:'nearest'});
+}
+function acAttach(inp) {
+  if (AC.inp === inp) return; acClose(); AC.inp = inp;
+  inp.setAttribute('role', 'combobox'); inp.setAttribute('aria-autocomplete', 'list'); inp.setAttribute('aria-controls', 'acList'); inp.setAttribute('aria-expanded', 'false');
+}
+function acUpdate() { if (!AC.inp) return; AC.items = searchNodes(AC.inp.value, 8); AC.act = 0; acRender(); }
+function acClose() { acList.hidden = true; if (AC.inp) { AC.inp.setAttribute('aria-expanded', 'false'); AC.inp.removeAttribute('aria-activedescendant'); } }
+function acChoose(i) {
+  const n = AC.items[i], inp = AC.inp; if (!n || !inp) return;
+  AC.last = {k:n.name.trim().toLowerCase(), n}; AC.lock = true; inp.value = n.name; acClose();
+  try { inp.dispatchEvent(new Event('input', {bubbles:true})); inp.dispatchEvent(new Event('change', {bubbles:true})); } finally { AC.lock = false; }
+  if (inp.hasAttribute('data-ac-go') && inp.form) { if (inp.form.requestSubmit) inp.form.requestSubmit(); else inp.form.dispatchEvent(new Event('submit', {bubbles:true, cancelable:true})); }
+  if (lastPtr !== 'mouse' && document.activeElement === inp) inp.blur();   // put the keyboard away
+}
+const acOf = t => (t && t.matches && t.matches('input[data-ac]') ? t : null);
+document.addEventListener('focusin', e => { const t = acOf(e.target); if (t) { acAttach(t); if (t.value.trim()) acUpdate(); } });
+document.addEventListener('input', e => { const t = acOf(e.target); if (!t || AC.lock) return; acAttach(t); acUpdate(); });
+document.addEventListener('keydown', e => {
+  if (!AC.inp || e.target !== AC.inp || acList.hidden) return;
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); AC.act = Math.max(0, Math.min(AC.items.length - 1, AC.act + (e.key === 'ArrowDown' ? 1 : -1))); acRender(); }
+  else if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); acChoose(AC.act); }
+  else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); acClose(); }
+}, true);
+document.addEventListener('focusout', e => { if (e.target === AC.inp) setTimeout(() => { if (document.activeElement !== AC.inp) acClose(); }, 140); });
+acList.addEventListener('mousedown', e => e.preventDefault());   // the typing cursor stays in the field
+acList.addEventListener('click', e => { const o = e.target.closest('[data-i]'); if (o) acChoose(+o.dataset.i); });
+addEventListener('scroll', e => { if (!acList.hidden && !(e.target && e.target.nodeType === 1 && acList.contains(e.target))) acPlace(); }, {passive:true, capture:true});
+addEventListener('resize', () => { if (!acList.hidden) acPlace(); });
+if (window.visualViewport) visualViewport.addEventListener('resize', () => { if (!acList.hidden) acPlace(); });
+
+// ---------- new versions ----------
+// The app downloads newer data and newer versions of this page by itself. They are switched in at once when
+// the app has just been opened and nothing was touched, otherwise the next time it comes back to the screen;
+// a notice offers to switch now. A new app (rare) is fetched by the app too and installed with one tap.
+const UPD = {pending:'', t0:performance.now(), touched:false};
+['pointerdown', 'keydown', 'wheel', 'touchstart'].forEach(t => addEventListener(t, () => { UPD.touched = true; }, {capture:true, passive:true}));
+const ssGet = k => { try { return sessionStorage.getItem(k); } catch (e) { return null; } };
+const ssSet = (k, v) => { try { sessionStorage.setItem(k, v); } catch (e) { /* ignore */ } };
+function applyUpdate() { ssSet('atlas-updated', JSON.stringify({kind:UPD.pending || 'data', at:Date.now(), y:Math.round(scrollY)})); location.reload(); }
+function updateReady(kind) {
+  UPD.pending = UPD.pending === 'page' ? 'page' : kind;
+  const fresh = !UPD.touched && performance.now() - UPD.t0 < 30000 && Date.now() - (+ssGet('atlas-auto-at') || 0) > 60000 && !state.story && !state.playing;
+  if (fresh) { ssSet('atlas-auto-at', String(Date.now())); applyUpdate(); return; }
+  note({key:'update', kind:'ok', sticky:true, html:`<span>${UPD.pending === 'page' ? 'A new version of the atlas is ready.' : 'Today’s data is ready.'}</span><button class="btn sm" data-act="reload">Update now</button>`});
+  dockSync();
+}
+document.addEventListener('visibilitychange', () => { if (document.hidden) return; UPD.t0 = performance.now(); UPD.touched = false; if (UPD.pending) applyUpdate(); });
+function appUpdateNote(info) {
+  const up = appUpdate(info); if (!up) { closeNote('appupdate', true); return; }
+  let d = null; try { d = JSON.parse(localStorage.getItem('atlas-app-later') || 'null'); } catch (e) { d = null; }
+  if (d && d.code === up.latestCode && Date.now() - d.at < 3 * 86400000) return;
+  const nm = esc(up.latestName || '');
+  note({key:'appupdate', kind:'info', sticky:true,
+    html:up.canInstall && up.apkReady ? `<span>App ${nm} is ready to install.</span><button class="btn sm" data-act="install">Install</button>` : `<span>App ${nm} is out.</span><a class="btn sm" href="${esc(up.apk)}" target="_blank" rel="noopener">Download</a>`,
+    onclose:() => { try { localStorage.setItem('atlas-app-later', JSON.stringify({code:up.latestCode, at:Date.now()})); } catch (e) { /* ignore */ } }});
+}
+function afterUpdate() {   // once, when the page starts
+  let j = null; try { j = JSON.parse(ssGet('atlas-updated') || 'null'); sessionStorage.removeItem('atlas-updated'); } catch (e) { j = null; }
+  let seen = ''; try { seen = localStorage.getItem('atlas-ui-seen') || ''; localStorage.setItem('atlas-ui-seen', UI_VERSION); } catch (e) { seen = UI_VERSION; }
+  const recent = j && Date.now() - j.at < 120000;
+  if (recent && j.y > 0) setTimeout(() => scrollTo(0, j.y), 120);
+  const newUi = seen ? seen !== UI_VERSION : !!(MK.info && MK.info.pageLive);
+  if (newUi) note({key:'whatsnew', kind:'ok', ms:12000, html:`<span>Updated to version ${UI_VERSION}.</span><button class="btn sm" data-act="whatsnew">What’s new</button>`});
+  else if (recent) note({kind:'ok', ms:3600, html:`<span>Updated. Data of ${esc(dataDay())}.</span>`});
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-act]'); if (!a) return; const act = a.dataset.act;
+  if (act === 'reload') applyUpdate();
+  else if (act === 'install') { try { if (APP && APP.installUpdate) APP.installUpdate(); } catch (err) { /* the Download link remains */ } }
+  else if (act === 'whatsnew') { closeNote('whatsnew', true); openDock('menu'); const d = $('#dockNew'); if (d) { d.open = true; d.scrollIntoView({block:'start'}); } }
+});
+// Esc closes the innermost thing first
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || PICK.sel || !acList.hidden || !$('#cmdk').hidden) return;
+  if (DOCK.open) { e.preventDefault(); e.stopPropagation(); closeDock(); }
+  else if (wrap.classList.contains('full')) { e.preventDefault(); e.stopPropagation(); setFull(false); }
+}, true);
+$('#cmdX').addEventListener('click', () => closeCmd());
+onMQ(narrowMQ, placeSide);
+onMQ(phoneMQ, () => { if (PICK.sel) pickPlace(); navSync(); });
+
 function applyView(hv, first) {
   if (hv) {
     if (hv.cmp && hv.cmp.length) CMP.ids = hv.cmp;
@@ -3526,13 +4143,12 @@ function init() {
   { const d = new Date(D.builtAt || D.asOf); if (!isNaN(d)) $('#topline').textContent = 'Who owns whom · 1900 → ' + d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric', timeZone:'UTC'}); }
   $('#cmdQ').placeholder = `Search ${fmtN(Math.floor(nodes.length / 100) * 100)}+ entities, countries, stories, or type a year`;
   MK.data = parseMarkets(D.markets); applyMarketValues();
-  if (APP) { MK.info = mkReadInfo(); MK.bootBuilt = (MK.info && MK.info.dataBuiltAt) || ''; const up = appUpdate(MK.info); if (up) { let seen = ''; try { seen = localStorage.getItem('atlas-update-note') || ''; } catch (e) {}
-    if (seen !== String(up.latestCode)) { try { localStorage.setItem('atlas-update-note', String(up.latestCode)); } catch (e) {} setTimeout(() => toast(`<span>App ${esc(up.latestName || 'update')} is out.</span><a class="btn sm" href="${esc(up.apk)}" target="_blank" rel="noopener">Download</a>`, 14000), 2500); } } }
+  if (APP) { MK.info = mkReadInfo(); MK.bootBuilt = (MK.info && MK.info.dataBuiltAt) || ''; setTimeout(() => appUpdateNote(MK.info), 2200); }
   if (!window.d3) { wrap.insertAdjacentHTML('beforeend', '<div class="nolib">The chart library could not load, so the live network is unavailable. The directory, stories and fallen-giants sections below still work.</div>'); }
   computeSizes(); fillSelects(); computeCenters(); computeVisible();
   resize();
   if (window.d3) {
-    zoom = d3.zoom().scaleExtent([0.15, 9]).on('zoom', e => { tf = e.transform; });
+    zoom = d3.zoom().scaleExtent([0.15, 9]).filter(zoomFilter).on('zoom', zoomed);
     d3.select(canvas).call(zoom).on('dblclick.zoom', null);
     // warm-up before the first frame: fewer steps for a larger network (the layout keeps settling on screen)
     const warm = Math.max(130, Math.min(260, Math.round(260 * 1300 / Math.max(1, vis.arr.length))));
@@ -3544,8 +4160,10 @@ function init() {
     requestAnimationFrame(loop);
   }
   computeHL(); renderSide(); renderTicker(); renderStats(); renderHisto();
+  placeSide();
   // a bookmarked view: #tab.e-entity.y-year.g-group.c-a~b
   applyView(readHash(), true);
+  navSync(); afterUpdate();
   addEventListener('hashchange', () => { const hv = readHash(); if (hv && viewToken() !== decodeURIComponent(location.hash.slice(1))) applyView(hv, false); });
 }
 init();

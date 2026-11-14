@@ -3,7 +3,8 @@
 Who owns and who controls the world's companies, from 1900 to today: governments, families, funds and companies linked by their stakes, takeovers, bailouts and mergers. One page works as a website and inside the Android app.
 
 - **Web app:** https://ninjapotato069.github.io/ownership-atlas/
-- **Android app:** the newest APK is at https://ninjapotato069.github.io/ownership-atlas/app/ (file named in [`app/releases/latest.json`](app/releases/latest.json)). Download it on the phone and open it. Installing over an older version keeps your settings. From 1.8 on, the app updates its own pages, so new features arrive without a reinstall.
+- **Android app:** the newest APK is at https://ninjapotato069.github.io/ownership-atlas/app/ (file named in [`app/releases/latest.json`](app/releases/latest.json)). Download it on the phone and open it. Installing over an older version keeps your settings. From 1.8 on, the app updates its own pages, so new features arrive without a reinstall. From 1.9 on, it also downloads a newer app by itself and offers a one-tap **Install** (Android asks once to allow installs from the app, then to confirm).
+- **On a phone:** a bottom bar (Atlas, News, Markets, Search, More), a side tab on the right edge (Details of the selected company, Today's status and biggest moves, Menu), lists drawn by the page instead of system drop-downs, suggestions under every search field, and notices that stack above the bar and stay until answered when they need an answer. One finger scrolls the page over the network; pinch (or full screen) to move inside it.
 
 ## How it stays up to date
 

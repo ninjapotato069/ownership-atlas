@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.ownershipatlas.app"
-    android:versionCode="9"
-    android:versionName="1.8">
+    android:versionCode="10"
+    android:versionName="1.9">
 
     <uses-sdk android:minSdkVersion="24" android:targetSdkVersion="34" />
 
@@ -11,6 +11,8 @@
     <!-- The daily background download waits for a network and survives restarts. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <!-- Lets the app hand a newer version of itself (downloaded from its own GitHub page) to Android's installer. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application
         android:label="@string/app_name"
@@ -33,7 +35,7 @@
             android:name=".MainActivity$SyncJob"
             android:permission="android.permission.BIND_JOB_SERVICE"
             android:exported="false" />
-        <!-- Serves exported CSV and PNG files to the app the user shares them with. -->
+        <!-- Serves exported CSV and PNG files to the app the user shares them with, and a downloaded update to the installer. -->
         <provider
             android:name=".MainActivity$Files"
             android:authorities="com.ownershipatlas.app.files"

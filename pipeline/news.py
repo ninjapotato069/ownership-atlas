@@ -134,6 +134,50 @@ def search(query, hours=30):
     return [], None
 
 
+def market_day(t):
+    """The trading day a moment belongs to: the US Eastern date, the day before until the open, Friday at weekends."""
+    try:
+        from zoneinfo import ZoneInfo
+        e = t.astimezone(ZoneInfo('America/New_York'))
+    except Exception:
+        e = t.astimezone(dt.timezone(dt.timedelta(hours=-5)))
+    d = e.date()
+    if (e.hour, e.minute) < (9, 30):
+        d -= dt.timedelta(days=1)
+    while d.weekday() > 4:
+        d -= dt.timedelta(days=1)
+    return d.isoformat()
+
+
+def rekey(prev):
+    """One time: days were stored under the date of the run (UTC), a day late for a run after the US close."""
+    if not prev.get('days') or prev.get('key') == 'market-day':
+        return prev
+    last = {}
+    for x in prev.get('items', []):
+        if x.get('at') and x['at'] > last.get(x.get('d'), ''):
+            last[x.get('d')] = x['at']
+    to = {}
+    for d in prev['days']:
+        try:
+            to[d] = market_day(dt.datetime.strptime(last[d][:19], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=dt.timezone.utc))
+        except (KeyError, ValueError):
+            to[d] = d
+    days = {}
+    for d in sorted(prev['days']):            # the later run of the same trading day wins
+        days[to[d]] = prev['days'][d]
+    items, seen = [], set()
+    for x in sorted(prev.get('items', []), key=lambda x: x.get('at') or '', reverse=True):
+        k = key_of(x.get('t', ''))
+        nd = to.get(x.get('d'), x.get('d'))
+        if (nd, k) in seen:
+            continue
+        seen.add((nd, k))
+        items.append(dict(x, d=nd))
+    log('news: days re-keyed to the trading day: %s' % json.dumps(to))
+    return dict(prev, days=days, items=items, key='market-day')
+
+
 def key_of(title):
     """Same headline from two feeds or two searches: compare letters and digits only."""
     return re.sub(r'[^a-z0-9]+', '', title.lower())[:90]
@@ -178,7 +222,11 @@ def main():
     except (OSError, ValueError):
         prev = {}
     ci = {c: i for i, c in enumerate(mk['cols'])}
-    day = (mk.get('asOf') or NOW.isoformat())[:10]
+    prev = rekey(prev)
+    try:
+        day = market_day(dt.datetime.strptime(mk['asOf'][:19], '%Y-%m-%dT%H:%M:%S').replace(tzinfo=dt.timezone.utc))
+    except (KeyError, TypeError, ValueError):
+        day = market_day(NOW)
 
     # 1. the day's biggest moves in dollars: value change = value - value / (1 + change)
     rows = []
@@ -252,7 +300,7 @@ def main():
     days[day] = {'moves': moves}
     allitems = old + items
     allitems.sort(key=lambda x: (x.get('d', ''), x.get('at') or ''), reverse=True)
-    doc = {'v': 1, 'updated': NOW.strftime('%Y-%m-%dT%H:%M:%SZ'), 'days': dict(sorted(days.items(), reverse=True)),
+    doc = {'v': 1, 'key': 'market-day', 'updated': NOW.strftime('%Y-%m-%dT%H:%M:%SZ'), 'days': dict(sorted(days.items(), reverse=True)),
            'items': allitems,
            'note': 'Headlines from Google News and Bing News search feeds: the headline, source, time and link only. '
                    'Kept for %d days.' % KEEP_DAYS}
