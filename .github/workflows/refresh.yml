@@ -1,17 +1,22 @@
 # Rebuilds the atlas and publishes it with GitHub Pages (branch gh-pages):
 #   index.html     the web app
-#   data.json      the same data on its own; the Android app downloads it once a day
+#   data.json      the same data on its own; the Android app downloads it when it opens
 #   version.json   the newest app release, so the app can say when an update is out
 #   companies.csv  today's market list
 #   app/           the app's page (page.html, page.json: the app updates itself from them) and the newest APK
 #   live/          the pipeline's state (market list, company universe, Wikidata cache, news, status)
-# Weekdays after the US close it first refreshes the market list and Wikidata; a push to main only rebuilds.
+# Weekdays after the Asian, European and US closes it refreshes the market list and news (Wikidata after the US close),
+# at weekends the news; a push to main only rebuilds.
 # gh-pages keeps a single commit, so the repository does not grow.
 name: Refresh the atlas
 
 on:
   schedule:
-    - cron: '37 22 * * 1-5'   # 22:37 UTC Mon-Fri = 04:07 IST Tue-Sat
+    # GitHub starts scheduled runs late (about 4 hours late in November 2026), hence several a day.
+    - cron: '37 10 * * 1-5'   # after the Asian and Indian closes: 10:37 UTC = 16:07 IST
+    - cron: '47 16 * * 1-5'   # after the European close: 16:47 UTC = 22:17 IST
+    - cron: '17 21 * * 1-5'   # after the US close: 21:17 UTC = 02:47 IST
+    - cron: '27 9 * * 0,6'    # weekends: headlines (prices stay at Friday's close)
   workflow_dispatch:
     inputs:
       wikidata:
@@ -57,7 +62,7 @@ jobs:
         run: python3 pipeline/news.py
 
       - name: Founding years, descriptions and owners (Wikidata)
-        if: github.event_name != 'push' && inputs.wikidata != 'skip'
+        if: (github.event_name == 'workflow_dispatch' && inputs.wikidata != 'skip') || github.event.schedule == '17 21 * * 1-5'
         working-directory: src
         run: python3 pipeline/wikidata.py "${{ inputs.wikidata || 'auto' }}"
 

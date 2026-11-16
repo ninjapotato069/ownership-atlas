@@ -8,7 +8,7 @@ Who owns and who controls the world's companies, from 1900 to today: governments
 
 ## How it stays up to date
 
-`.github/workflows/refresh.yml` runs every weekday at 22:37 UTC (04:07 IST), after the US close:
+`.github/workflows/refresh.yml` runs on weekdays after the Asian, European and US closes (10:37, 16:47 and 21:17 UTC; GitHub often starts them a few hours late), and once a day at weekends for news. Wikidata is looked up after the US close only:
 
 1. **`pipeline/markets.py`** reads TradingView's stock screener market by market. It keeps one line per company and records every listed company worth US$1.5 billion or more that the atlas holds.
    - A company joins the atlas when it reaches $3 billion.
@@ -19,7 +19,7 @@ Who owns and who controls the world's companies, from 1900 to today: governments
 
    The full refresh runs weekly; on other days only new companies are looked up.
 3. **`pipeline/news.py`** collects the day's news into `live/news.json`, keeping 7 days:
-   - the biggest moves in market value (in dollars, both ways), with headlines about each company;
+   - the biggest moves in market value (in dollars, both ways), counting only markets that have traded that day, with headlines about each company;
    - deal headlines (acquisitions, mergers, stakes, buyouts); the build keeps those that name an entity in the atlas;
    - market headlines.
 
@@ -27,7 +27,7 @@ Who owns and who controls the world's companies, from 1900 to today: governments
 4. **`build/build.js`** merges the hand-built atlas with this automatic layer and writes the page and `data.json`. Hand-built entities and links always win.
 5. The result is published to the `gh-pages` branch, which GitHub Pages serves. That branch keeps a single commit.
 
-The Android app downloads `data.json` when it opens and about once a day in the background. It also checks `app/page.json`: when the page's code changed (and this app can run it), it downloads `app/page.html`, checks its SHA-256 and shows it instead of the page built into the app. A downloaded page that does not start is set aside and the built-in page comes back. `app/make-page.js` builds that page; raise `MIN_CODE` there when a page needs a newer app.
+The Android app downloads `data.json` when it opens, when it comes back to the screen (at most every 20 minutes), and about once a day in the background. It also checks `app/page.json`: when the page's code changed (and this app can run it), it downloads `app/page.html`, checks its SHA-256 and shows it instead of the page built into the app. A downloaded page that does not start is set aside and the built-in page comes back. `app/make-page.js` builds that page; raise `MIN_CODE` there when a page needs a newer app.
 
 A change to the app itself (Java, manifest) still needs a new APK: build it with `app/build.sh`, put it in `app/releases/` and update `latest.json`; the app then shows an update note. `.github/workflows/app.yml` can do this on GitHub instead when the signing secrets are set.
 

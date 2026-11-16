@@ -1608,7 +1608,7 @@ function finBlock(n) {
       const lbl = f.pl || (k === 'p' ? (pr < 0 ? 'Pre-tax loss' : 'Pre-tax profit') : (pr < 0 ? 'Net loss' : 'Net profit'));
       cells += cell(esc(lbl), `<span class="${pr < 0 ? 'neg' : ''}">${pr < 0 ? '<span aria-hidden="true">▼ </span>' : ''}${a}</span>`, [b, mg != null ? fmtPct(mg) + ' margin' : ''].filter(Boolean).join(' · '));
     }
-    if (f.m != null) cells += cell('Market value', ap('m') + fmtV(f.m), [f.mk && f.mk.d1 != null ? `<span class="${chgCls(f.mk.d1)}">${fmtChg(f.mk.d1)}</span> on ${esc(mkWhen())}` : '', isIN ? '≈' + fmtCr(usdToCr(f.m)) : '', f.r ? (f.m / f.r).toFixed(1) + '× revenue' : '', f.p > 0 ? Math.round(f.m / f.p) + '× pre-tax profit' : ''].filter(Boolean).join(' · '));
+    if (f.m != null) cells += cell('Market value', ap('m') + fmtV(f.m), [f.mk && f.mk.d1 != null ? `<span class="${chgCls(f.mk.d1)}">${fmtChg(f.mk.d1)}</span> in the last session` : '', isIN ? '≈' + fmtCr(usdToCr(f.m)) : '', f.r ? (f.m / f.r).toFixed(1) + '× revenue' : '', f.p > 0 ? Math.round(f.m / f.p) + '× pre-tax profit' : ''].filter(Boolean).join(' · '));
     else if (f.v != null) cells += cell('Private valuation', ap('v') + fmtB(f.v), f.r ? (f.v / f.r).toFixed(1) + '× revenue' : '');
     if (f.a != null) cells += cell(n.ind === 'ins' ? 'Assets under management' : n.ind === 'gov' ? 'Balance sheet' : n.ind === 'org' ? 'Endowment or assets' : 'Total assets', ap('a') + fmtB(f.a), '');
     if (f.e != null) cells += cell('Employees', ap('e') + fmtN(f.e), f.r && !f.rl ? '$' + fmtCount(f.r * 1e9 / f.e) + ' revenue each' : '');
@@ -2680,7 +2680,7 @@ function renderWorldCountries() {
     $('#wFlows').innerHTML = state.mapFlows ? fl.map(c => { const A = P[c.a], B = P[c.b]; return `<path class="flow" d="${arcD(A, B, .25)}" style="stroke-width:${(1 + Math.sqrt(c.v / fmx) * 7).toFixed(1)}px"><title>${esc(COUNTRY[c.a].name)} → ${esc(COUNTRY[c.b].name)}: ${fmtB(c.v)} across ${c.n} deals</title></path>`; }).join('') : '';
   }
   scaleWorld(MAP.wT || d3.zoomIdentity);
-  const labels = {hq:['Where the entities are', `Entities headquartered in each country in ${Y}.`], buy:['Deals made', `Deals where a company from the country was the buyer or investor, up to ${Y}.`], sell:['Deals received', `Deals where a company from the country was the target, up to ${Y}.`], in:['Foreign money in', `Disclosed value of cross-border deals into each country, up to ${Y}.`], rev:['Revenue of companies based here', 'Combined latest revenue of companies headquartered in each country, each group counted once.'], mcap:['Market value of companies based here', `Combined market value of listed companies headquartered in each country${MK.data ? ` (${mkWhen()} close for those worth $10B+)` : ', 20 Oct 2026'}.`], share:['State-owned share', `Share of each country's entities in ${Y} that are state companies, governments or sovereign funds. Countries with fewer than three entities are left grey.`]};
+  const labels = {hq:['Where the entities are', `Entities headquartered in each country in ${Y}.`], buy:['Deals made', `Deals where a company from the country was the buyer or investor, up to ${Y}.`], sell:['Deals received', `Deals where a company from the country was the target, up to ${Y}.`], in:['Foreign money in', `Disclosed value of cross-border deals into each country, up to ${Y}.`], rev:['Revenue of companies based here', 'Combined latest revenue of companies headquartered in each country, each group counted once.'], mcap:['Market value of companies based here', `Combined market value of listed companies headquartered in each country${MK.data ? ` (prices as of ${mkWhen()})` : ', 20 Oct 2026'}.`], share:['State-owned share', `Share of each country's entities in ${Y} that are state companies, governments or sovereign funds. Countries with fewer than three entities are left grey.`]};
   $('#mapH').textContent = labels[metric][0]; $('#mapSub').textContent = labels[metric][1] + (filterActive() ? ' Atlas filters applied.' : '') + ' Click a country to see who it owns abroad and who owns it.';
   const f = v => MONEY_MAP.has(metric) ? fmtB(v) : Math.round(v);
   if (SC) $('#mapLeg').innerHTML = `<span>State-controlled share:</span>${SC.map((c, i) => `<span class="sw" style="background:${c}"></span><span>${['0–25%', '25–50%', '50–75%', '75–100%'][i]}</span>`).join('')}<span class="sw" style="background:var(--land);margin-left:10px;outline:1px solid var(--line-strong)"></span><span>fewer than 3 entities</span>`;
@@ -2998,7 +2998,7 @@ function renderFin() {
   $('#finIntro').textContent = `${fmtN(rows.length)} companies with figures${filterActive() ? ' (atlas filters applied; pick “Everything” to clear)' : ''}. Latest available year in US dollars; the timeline year does not apply here. Figures marked ≈ are approximate.`;
   $('#finKpis').innerHTML = `<div><dt>Combined revenue</dt><dd>${fmtB(totR) || '–'}<small>each group counted once</small></dd></div>
   <div><dt>Combined profit or loss</dt><dd class="${totP < 0 ? 'neg' : ''}">${fmtBs(totP) || '–'}<small>${losers} making a loss</small></dd></div>
-  <div><dt>Combined market value</dt><dd>${fmtB(totM) || '–'}<small>${MK.data ? `listed companies; ${esc(mkWhen())} close for those worth $10B+` : 'listed companies, 20–21 Oct 2026'}</small></dd></div>
+  <div><dt>Combined market value</dt><dd>${fmtB(totM) || '–'}<small>${MK.data ? `listed companies; prices as of ${esc(mkWhen())}` : 'listed companies, 20–21 Oct 2026'}</small></dd></div>
   <div><dt>State-controlled share</dt><dd>${totR ? Math.round(pubR / totR * 100) + '%' : '–'}<small>of revenue, public sector and governments</small></dd></div>`;
   $$('#finPre [data-pre]').forEach(b => { const p = FIN_PRESETS[+b.dataset.pre][1], f = state.filters, own = p.own || ['private', 'state', 'gov'];
     b.setAttribute('aria-pressed', (p.ind || '') === f.ind && (p.cc || '') === f.cc && !f.region && own.length === f.own.size && own.every(o => f.own.has(o))); });
@@ -3132,7 +3132,18 @@ function parseMarkets(j) {
     threshold:typeof j.threshold === 'number' ? j.threshold / 1e9 : 10};
 }
 const mkDay = d => d ? d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric', timeZone:'UTC'}) : '';
-const mkWhen = () => MK.data && MK.data.asOf ? mkDay(MK.data.asOf) : '';
+// When the market list was taken: "Mon 16 Nov, 16:07" in the viewer's time; at weekends, "Fri 13 Nov close".
+// The trading day runs from the Sydney open (about 23:00 UTC) to the New York close, as in pipeline/news.py.
+const asOfText = () => {
+  const s = (MK.data && MK.data.asOf) || (D.markets && D.markets.asOf) || D.builtAt || '', d = new Date(s);
+  if (!s || isNaN(d)) return D.asOf || '';
+  const t = new Date(d.getTime() + 36e5); let back = 0;
+  while (t.getUTCDay() === 0 || t.getUTCDay() === 6) { t.setUTCDate(t.getUTCDate() - 1); back++; }
+  const WD = 'Sun Mon Tue Wed Thu Fri Sat'.split(' '), MO = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' '), p2 = n => String(n).padStart(2, '0');
+  return back ? `${WD[t.getUTCDay()]} ${t.getUTCDate()} ${MO[t.getUTCMonth()]} close`
+    : `${WD[d.getDay()]} ${d.getDate()} ${MO[d.getMonth()]}, ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+};
+const mkWhen = asOfText;
 const mkCountry = cc => COUNTRY[cc] ? COUNTRY[cc].name : MK.data && typeof MK.data.countries[cc] === 'string' ? MK.data.countries[cc] : cc;
 const fmtV = v => v == null ? '' : v >= 1000 ? '$' + (v / 1000).toFixed(v >= 10000 ? 1 : 2) + 'T' : fmtB(v);
 const fmtChg = x => x == null ? '' : (x > 0 ? '▲ ' : x < 0 ? '▼ ' : '') + Math.abs(x).toFixed(Math.abs(x) < 10 ? 1 : 0) + '%';
@@ -3154,7 +3165,7 @@ function applyMarketValues() {
     if (f.e == null && r.emp > 0) { f.e = r.emp; src.e = 'live'; }
     f.src = src; f.mk = r; FIN[n.id] = f;
   }
-  SRC_TEXT.live = `${MK.data && MK.data.source || 'TradingView screener'}, ${mkWhen()} close (the list of companies worth $10B+ is refreshed daily)`;
+  SRC_TEXT.live = `${MK.data && MK.data.source || 'TradingView screener'}, prices as of ${mkWhen()} (refreshed several times a day)`;
   ENG.reset();
 }
 function mkOwner(n) {
@@ -3199,7 +3210,7 @@ function renderMarkets() {
   const rows = MK.data.rows, tot = d3.sum(rows, r => r.m), linked = rows.filter(mkMapped), lv = d3.sum(linked, r => r.m);
   const ccs = new Set(rows.map(r => r.cc)), withD = rows.filter(r => r.d1 != null), day = withD.length ? d3.sum(withD, r => r.m * r.d1) / d3.sum(withD, r => r.m) : null;
   const thr = MK.data.threshold >= 1 ? '$' + (+MK.data.threshold.toFixed(1)) + ' billion' : '$' + Math.round(MK.data.threshold * 1000) + ' million';
-  $('#mkIntro').innerHTML = `Every listed company worth <b>${thr} or more</b>, ${fmtN(rows.length)} in all, valued at the ${esc(mkWhen())} close. ${D.fromApp || APP ? 'The app downloads a fresh list each day.' : /(^|\.)github\.io$/.test(location.hostname) ? 'The list is refreshed every weekday.' : `The <a href="${SITE_URL}" target="_blank" rel="noopener">published atlas</a> is refreshed every weekday.`} Each one is in the atlas: click a row for its profile. For ${fmtN(linked.length)} of them the atlas also records owners.`;
+  $('#mkIntro').innerHTML = `Every listed company worth <b>${thr} or more</b>, ${fmtN(rows.length)} in all, valued at prices as of ${esc(mkWhen())}. ${D.fromApp || APP ? 'The app downloads the newest list when it opens.' : /(^|\.)github\.io$/.test(location.hostname) ? 'The list is refreshed several times a day.' : `The <a href="${SITE_URL}" target="_blank" rel="noopener">published atlas</a> is refreshed several times a day.`} Each one is in the atlas: click a row for its profile. For ${fmtN(linked.length)} of them the atlas also records owners.`;
   mkStatus();
   $('#mkKpis').innerHTML = `<div><dt>Companies</dt><dd>${fmtN(rows.length)}<small>based in ${ccs.size} countries</small></dd></div>
   <div><dt>Combined value</dt><dd>${fmtV(tot)}<small>${esc(rows[0].n)} is the largest at ${fmtV(rows[0].m)}</small></dd></div>
@@ -3257,7 +3268,7 @@ const nwMatch = (txt, q) => !q || String(txt || '').toLowerCase().includes(q);
 function renderNews() {
   const el = $('#tab-news'), days = nwDays();
   if (!days.length) {
-    el.innerHTML = `<p class="empty">News appears here after the next daily refresh: the biggest moves in market value with headlines about each company, and deal news that names a company in the atlas.</p>`;
+    el.innerHTML = `<p class="empty">News appears here after the next refresh: the biggest moves in market value with headlines about each company, and deal news that names a company in the atlas.</p>`;
     return;
   }
   if (!el.dataset.init) {
@@ -3276,7 +3287,7 @@ function renderNews() {
     });
   }
   const latest = days[0];
-  $('#nwIntro').innerHTML = `Collected every weekday after the US market closes: the biggest moves in market value, with headlines about each company, deal news that names a company in the atlas, and market headlines. The last 7 days are kept. Headlines link to the original articles.`;
+  $('#nwIntro').innerHTML = `Collected several times a day, after the Asian, European and US closes (at weekends, headlines only): the biggest moves in market value among the markets that have traded that day, with headlines about each company, deal news that names a company in the atlas, and market headlines. The last 7 days are kept. Headlines link to the original articles.`;
   const up = Date.parse(D.news.updated || '');
   $('#nwPill').innerHTML = `<i></i>Updated ${isNaN(up) ? esc(nwDate(latest.d)) : esc(new Date(up).toLocaleString('en-GB', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}))}`;
   if (NW.day !== 'all' && !days.some(d => d.d === NW.day)) NW.day = 'all';
@@ -3361,17 +3372,17 @@ function dlMarkets() {
 // App: the daily download (done by the app, outside the page) and app updates.
 function mkReadInfo() { try { const i = APP ? JSON.parse(APP.liveInfo()) : null; return i && typeof i === 'object' ? i : null; } catch (e) { return null; } }
 const mkTime = ms => ms ? new Date(ms).toLocaleString('en-GB', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'}) : '';
-// the day of the market list (the part refreshed daily); a rebuild without it keeps the older date
-const dataDay = () => { const d = new Date((D.markets && D.markets.asOf) || D.builtAt || D.asOf); return isNaN(d) ? '' : d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric', timeZone:'UTC'}); };
+// when the market list was taken (a rebuild without a new list keeps the older time)
+const dataDay = () => asOfText();
 function appUpdate(info) {
   return info && info.latestCode > info.appCode && /^https:\/\/(github\.com\/[\w.-]+\/[\w.-]+\/releases\/|ninjapotato069\.github\.io\/ownership-atlas\/)/.test(info.apk || '') ? info : null;
 }
 function mkStatus() {
   const pill = $('#mkPill'); if (!pill) return;
   const info = MK.info;
-  if (!APP) {   // the published site rebuilds every weekday; a copy elsewhere points to it
+  if (!APP) {   // the published site rebuilds several times a day; a copy elsewhere points to it
     pill.className = 'mkpill on';
-    pill.innerHTML = /(^|\.)github\.io$/.test(location.hostname) ? `<i></i>Data of ${esc(dataDay())} · refreshed every weekday`
+    pill.innerHTML = /(^|\.)github\.io$/.test(location.hostname) ? `<i></i>Data of ${esc(dataDay())} · refreshed several times a day`
       : `<i></i>Data of ${esc(dataDay())} · <a href="${SITE_URL}" target="_blank" rel="noopener">newest version</a>`;
     return;
   }
@@ -3380,12 +3391,19 @@ function mkStatus() {
   pill.innerHTML = `<i></i>${D.fromApp ? 'Downloaded' : 'Built in'} · data of ${esc(dataDay())}`;
   const box = $('#mkLive'); box.hidden = false;
   const up = appUpdate(info);
-  box.innerHTML = `<div class="row"><h3>Daily refresh</h3><button class="btn sm" data-act="mksync"${MK.busy ? ' disabled' : ''}>${MK.busy ? 'Checking…' : 'Check now'}</button></div>
-  <p>The app downloads the newest atlas when it opens and about once a day in the background: today's market values and news, companies that crossed $3 billion, and owners found since.${info && info.pageUpdates ? ' New features and fixes arrive the same way, without reinstalling.' : ''}${info && info.lastTry ? ` Last checked ${esc(mkTime(info.lastTry))}.` : ''}</p>
+  box.innerHTML = `<div class="row"><h3>Updates</h3><button class="btn sm" data-act="mksync"${MK.busy ? ' disabled' : ''}>${MK.busy ? 'Checking…' : 'Check now'}</button></div>
+  <p>The app checks for a newer atlas when it opens or comes back to the screen, and about once a day in the background: today's market values and news, companies that crossed $3 billion, and owners found since.${info && info.pageUpdates ? ' New features and fixes arrive the same way, without reinstalling.' : ''}${info && info.lastTry ? ` Last checked ${esc(mkTime(info.lastTry))}.` : ''}</p>
   ${info && info.error ? `<p class="err">${esc(info.error)}</p>` : ''}
   ${up ? (up.canInstall && up.apkReady ? `<p><b>Version ${esc(up.latestName || '')} of the app is ready.</b> <button class="btn sm" data-act="install">Install</button></p>` : `<p><b>Version ${esc(up.latestName || '')} of the app is out.</b> <a href="${esc(up.apk)}" target="_blank" rel="noopener">Download it</a> and open the file to update; your settings stay.</p>`) : ''}`;
 }
-function mkSyncNow() { if (!APP || !APP.syncNow || MK.busy) return; MK.busy = true; mkStatus(); try { APP.syncNow(); } catch (e) { MK.busy = false; mkStatus(); } }
+// A quiet check when the app opens or comes back to the screen (the site is rebuilt several times a day).
+const QUIET = {at: 0};
+function quietSync() {
+  if (!APP || !APP.syncNow || MK.busy || document.hidden) return;
+  const i = mkReadInfo(); if (!i || Date.now() - (i.lastTry || 0) < 20 * 60e3) return;
+  QUIET.at = Date.now(); try { APP.syncNow(); } catch (e) { QUIET.at = 0; }
+}
+function mkSyncNow() { if (!APP || !APP.syncNow || MK.busy) return; QUIET.at = 0; MK.busy = true; mkStatus(); try { APP.syncNow(); } catch (e) { MK.busy = false; mkStatus(); } }
 // Called by the app after each download attempt, with the same object liveInfo() returns.
 window.atlasLive = function (info) {
   MK.busy = false;
@@ -3393,9 +3411,10 @@ window.atlasLive = function (info) {
   const i = MK.info || {};
   // Offer a reload only for a download made since the page started (a file the page could not use stays ignored).
   const newData = i.hasData && typeof i.dataBuiltAt === 'string' && i.dataBuiltAt > (D.builtAt || '') && i.dataBuiltAt !== MK.bootBuilt;
+  const asked = i.manual && !(QUIET.at && Date.now() - QUIET.at < 180e3); QUIET.at = 0;
   if (i.pageUpdated || newData) updateReady(i.pageUpdated ? 'page' : 'data');
-  else if (i.manual && i.error) toast(esc(i.error), 7000, {kind:'warn', key:'sync'});
-  else if (i.manual) toast('The atlas is up to date.', 3200, {kind:'ok', key:'sync'});
+  else if (asked && i.error) toast(esc(i.error), 7000, {kind:'warn', key:'sync'});
+  else if (asked) toast('The atlas is up to date.', 3200, {kind:'ok', key:'sync'});
   appUpdateNote(i);
   if (state.tab === 'markets') mkStatus();
   dockSync();
@@ -3476,7 +3495,7 @@ function renderMethod() {
   <section><h3>Ownership colours</h3><ul><li><b>Private sector</b>: listed or unlisted private companies, start-ups, investment firms, families, foundations and co-operatives.</li><li><b>Public sector</b>: companies controlled by a state (PSUs and SOEs), including listed ones.</li><li><b>Government &amp; sovereign</b>: governments, central banks and sovereign wealth funds.</li><li>Colours change over time: privatisations and nationalisations switch an entity's colour in the year it happened.</li></ul></section>
   <section><h3>Assumptions</h3><ul><li>Years are completion years. Announced-but-pending deals (for example Nvidia–Hugging Face, Union Pacific–Norfolk Southern, the IDBI Bank sale) appear as dashed links from their announcement year.</li><li>Stakes are as at the deal or the latest public figure noted in the deal text; holdings change constantly, so treat them as approximate.</li><li>Values are headline values in nominal US dollars at the time; INR figures are kept in the notes. Many deals have no disclosed value, so dollar totals understate the real flows.</li><li>"Scale" (node size) is a rough 1–5 tier based on market value or assets, used only for legibility.</li><li>Merged companies stay on the map as hollow outlines after they disappear, so you can still see who absorbed whom. Switch this off with "Absorbed &amp; defunct".</li><li>Passive index holdings by asset managers are mostly left out; only a few examples are shown.</li></ul></section>
   <section><h3>Financial figures</h3><ul><li><b>Revenue</b> is turnover for the latest available year. For listed companies it is the last 12 months, and <b>profit or loss</b> is pre-tax, both from companiesmarketcap.com on 20–21 October 2026. Pre-tax profit compares fairly across tax regimes; one-off gains and write-downs are included, and the biggest are noted (Vodafone Idea's AGR relief, Nissan's losses).</li><li>Unlisted and state-owned companies use their latest annual report or news coverage of it (mostly FY2025-26 for India); the period is shown with each figure. Figures marked ≈ are approximate, compiled from public reporting.</li><li><b>Market value</b> is on 20–21 October 2026; start-ups show their last private valuation. Banks' revenue is total income; insurers' is premium income where marked.</li><li>Loss-making listed companies come from the bottom of the same ranking (the biggest losses); smaller losses can be missing, which flatters the totals slightly.</li><li><b>Customers</b> are as each company counts them (customers, subscribers, users or accounts), so they are not strictly comparable.</li><li><b>Listed stakes</b> value an owner's holdings recorded in this atlas at today's market prices. Totals count each group once: subsidiaries consolidated by a parent in the dataset are left out.</li><li>Rupee figures: annual flows at ₹88.5 per dollar (FY2025-26 average); today's values at about ₹95 per dollar.</li></ul></section>
-  <section><h3>Automatic updates</h3><p>The atlas rebuilds itself every weekday from its public repository, <a href="https://github.com/ninjapotato069/ownership-atlas" target="_blank" rel="noopener">github.com/ninjapotato069/ownership-atlas</a>. After the US close, GitHub Actions reads TradingView's stock screener market by market (prices delayed, values in US dollars). It keeps one line per company, dropping second listings, preference shares and depositary receipts, and adds every listed company worth $3 billion or more that the hand-built map lacks. It then looks each one up on Wikidata for its founding year, description and owners, and publishes the new atlas at <a href="https://ninjapotato069.github.io/ownership-atlas/" target="_blank" rel="noopener">ninjapotato069.github.io/ownership-atlas</a>. The Android app downloads it once a day.</p>
+  <section><h3>Automatic updates</h3><p>The atlas rebuilds itself several times a day from its public repository, <a href="https://github.com/ninjapotato069/ownership-atlas" target="_blank" rel="noopener">github.com/ninjapotato069/ownership-atlas</a>. After the Asian, European and US closes, GitHub Actions reads TradingView's stock screener market by market (prices delayed, values in US dollars). It keeps one line per company, dropping second listings, preference shares and depositary receipts, and adds every listed company worth $3 billion or more that the hand-built map lacks. It then looks each one up on Wikidata for its founding year, description and owners, and publishes the new atlas at <a href="https://ninjapotato069.github.io/ownership-atlas/" target="_blank" rel="noopener">ninjapotato069.github.io/ownership-atlas</a>. The Android app checks for it whenever it is opened.</p>
   <p>${fmtN(nodes.filter(n => n.auto).length)} entities came in this way: ${fmtN(nodes.filter(n => n.auto && EXT[n.id].s).length)} listed companies and ${fmtN(nodes.filter(n => n.auto && !EXT[n.id].s).length)} of their owners, with ${fmtN(links.filter(l => l.note === 'Wikidata').length)} ownership links. Owners come from Wikidata's parent-organisation statements and from holders with a stated stake of 10% or more, or a state. A link with a start date counts as a deal of that year; one without is shown in the current year only, marked "year unknown". Volunteers keep Wikidata up and it can lag behind, so these links are labelled "Wikidata". The ${fmtN(nodes.filter(n => !n.auto).length)} entities mapped by hand, and their links, always take precedence.</p>
   <p>A company joins at $3 billion and leaves after 30 days below $1.5 billion. Where Wikidata has no founding year, the field is left blank and the company appears on the timeline only in the current year. Companies with no owners or holdings found stay out of the network picture; they are in the directory, search and Markets. For companies in the list, market value, and missing revenue, profit and staff numbers, come from the screener.</p></section>
   <section><h3>Coverage limits</h3><p>No dataset can hold every company in the world. Every listed company worth $3 billion or more is now included automatically (see Automatic updates), but its owners appear only where Wikidata records them. Checked on 21 October 2026, the hand-built part includes every company in the global top 200 by market value and the top 100 by revenue on companiesmarketcap.com (leaving out StoneX and Bullish, whose revenue is gross trading turnover, and Christian Dior SE, a holding company for LVMH), all of India's 100 most valuable listed companies, the largest unlisted private and state-owned giants, and the leaders of every industry listed in the filters (from chemicals, airlines and hospitals to sports, education and crypto), along with central banks, pension funds, development banks and foundations. Below that it is selective: expect gaps among mid-sized companies, co-operative banks beyond the two largest, and financial figures for many unlisted state companies and smaller Indian banks and insurers.</p></section>
@@ -3774,8 +3793,9 @@ document.addEventListener('keydown', e => {
 // ====================================================================================================
 // Ergonomics: the side tab, the bottom bar, pickers and suggestions drawn by the page, touch, updates
 // ====================================================================================================
-const UI_VERSION = '2.0';
+const UI_VERSION = '2.1';
 const WHATS_NEW = [
+  'Fresher data: the atlas is rebuilt after the Asian, European and US closes, the app checks whenever you open it, and today’s moves count only markets that have traded today.',
   'A side tab on the right edge: the selected company, today’s moves and deals, every section, and the settings.',
   'On phones, a bar at the bottom for Atlas, News, Markets, Search and More, and the sections stay within reach as you scroll.',
   'Pickers and search suggestions are drawn by the atlas, so they work the same on every phone.',
@@ -3852,7 +3872,7 @@ function renderDockToday() {
     ? `<div class="dupd"><p><b>App ${esc(up.latestName || '')} is ready to install.</b><small>Android asks you to confirm. Your settings stay.</small></p><button class="ibtn pri" data-act="install">Install</button></div>`
     : `<div class="dupd"><p><b>App ${esc(up.latestName || '')} is out.</b><small>Download it and open the file to install. Your settings stay.</small></p><a class="ibtn pri" href="${esc(up.apk)}" target="_blank" rel="noopener">Download</a></div>`;
   if (APP) h += `${info && info.error ? `<p style="color:var(--i-critical)">${esc(info.error)}</p>` : ''}<div class="pact"><button class="ibtn" data-act="dock-sync"${MK.busy ? ' disabled' : ''}>${MK.busy ? 'Checking…' : 'Check for updates'}</button></div>`;
-  else h += `<p>${/(^|\.)github\.io$/.test(location.hostname) ? 'Refreshed every weekday after the US market closes.' : `This copy is a snapshot. The <a href="${SITE_URL}" target="_blank" rel="noopener" style="color:var(--i-accent)">published atlas</a> is refreshed every weekday.`}</p>`;
+  else h += `<p>${/(^|\.)github\.io$/.test(location.hostname) ? 'Refreshed after the Asian, European and US closes, and at weekends for news.' : `This copy is a snapshot. The <a href="${SITE_URL}" target="_blank" rel="noopener" style="color:var(--i-accent)">published atlas</a> is refreshed every weekday.`}</p>`;
   if (mk) {
     const rows = mk.rows, withD = rows.filter(r => r.d1 != null), day = withD.length ? d3.sum(withD, r => r.m * r.d1) / d3.sum(withD, r => r.m) : null;
     h += `<h3>Listed companies · ${esc(mkWhen())}</h3><dl class="statgrid"><div><dt>Combined value</dt><dd>${fmtV(d3.sum(rows, r => r.m))}</dd></div><div><dt>On the day</dt><dd class="${chgCls(day)}">${day == null ? '–' : fmtChg(day)}</dd></div><div><dt>Rose</dt><dd>${fmtN(withD.filter(r => r.d1 > 0).length)}</dd></div><div><dt>Fell</dt><dd>${fmtN(withD.filter(r => r.d1 < 0).length)}</dd></div></dl>`;
@@ -4092,7 +4112,7 @@ function updateReady(kind) {
   note({key:'update', kind:'ok', sticky:true, html:`<span>${UPD.pending === 'page' ? 'A new version of the atlas is ready.' : 'Today’s data is ready.'}</span><button class="btn sm" data-act="reload">Update now</button>`});
   dockSync();
 }
-document.addEventListener('visibilitychange', () => { if (document.hidden) return; UPD.t0 = performance.now(); UPD.touched = false; if (UPD.pending) applyUpdate(); });
+document.addEventListener('visibilitychange', () => { if (document.hidden) return; UPD.t0 = performance.now(); UPD.touched = false; if (UPD.pending) applyUpdate(); else setTimeout(quietSync, 1500); });
 function appUpdateNote(info) {
   const up = appUpdate(info); if (!up) { closeNote('appupdate', true); return; }
   let d = null; try { d = JSON.parse(localStorage.getItem('atlas-app-later') || 'null'); } catch (e) { d = null; }
@@ -4143,7 +4163,7 @@ function init() {
   { const d = new Date(D.builtAt || D.asOf); if (!isNaN(d)) $('#topline').textContent = 'Who owns whom · 1900 → ' + d.toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric', timeZone:'UTC'}); }
   $('#cmdQ').placeholder = `Search ${fmtN(Math.floor(nodes.length / 100) * 100)}+ entities, countries, stories, or type a year`;
   MK.data = parseMarkets(D.markets); applyMarketValues();
-  if (APP) { MK.info = mkReadInfo(); MK.bootBuilt = (MK.info && MK.info.dataBuiltAt) || ''; setTimeout(() => appUpdateNote(MK.info), 2200); }
+  if (APP) { MK.info = mkReadInfo(); MK.bootBuilt = (MK.info && MK.info.dataBuiltAt) || ''; setTimeout(() => appUpdateNote(MK.info), 2200); setTimeout(quietSync, 6000); setInterval(quietSync, 5 * 60e3); }
   if (!window.d3) { wrap.insertAdjacentHTML('beforeend', '<div class="nolib">The chart library could not load, so the live network is unavailable. The directory, stories and fallen-giants sections below still work.</div>'); }
   computeSizes(); fillSelects(); computeCenters(); computeVisible();
   resize();
